@@ -9,6 +9,7 @@ classdef GenericFeature < handle %matlab.mixin.Copyable %hgsetget
         Feat
         FeatSize
         ExampleCount
+        Y
         
         ImSize
         Grid
@@ -34,7 +35,7 @@ classdef GenericFeature < handle %matlab.mixin.Copyable %hgsetget
 
         end
         
-        function assign_registry_and_tree_from_folder(object, in_rootpath, objlist, out_registry_path)
+        function assign_registry_and_tree_from_folder(object, in_rootpath, objlist, labelslist, out_registry_path, out_ext)
             
             % Init members
             object.Registry = [];
@@ -48,6 +49,11 @@ classdef GenericFeature < handle %matlab.mixin.Copyable %hgsetget
             
             object.Tree = explore_next_level_folder(object, '', object.Tree, objlist);
             
+            if ~isempty(labelslist)
+                y_1 = create_y(object.Registry, labelslist, []);
+                [~, object.Y] = max(y_1, [], 2);
+            end
+            
             if ~isempty(out_registry_path)
                 
                 [reg_dir, ~, ~] = fileparts(out_registry_path);
@@ -57,9 +63,17 @@ classdef GenericFeature < handle %matlab.mixin.Copyable %hgsetget
                 if (fid==-1)
                     fprintf(2, 'Cannot open file: %s', out_registry_path);
                 end
-         
+      
                 for line_idx=1:object.ExampleCount
-                    fprintf(fid, '%s\n', object.Registry{line_idx});
+                    if isempty(out_ext) && isempty(labelslist) 
+                        fprintf(fid, '%s\n', object.Registry{line_idx});
+                    elseif isempty(labelslist) 
+                        fprintf(fid, '%s\n', [object.Registry{line_idx} out_ext]);
+                    elseif isempty(out_ext)
+                        fprintf(fid, '%s\n', [object.Registry{line_idx} ' ' labelslist{object.Y(line_idx)}]);
+                    else
+                        fprintf(fid, '%s\n', [object.Registry{line_idx} out_ext  ' ' labelslist{object.Y(line_idx)}]);
+                    end
                 end
                 fclose(fid);
             end
