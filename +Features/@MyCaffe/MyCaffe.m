@@ -18,11 +18,11 @@ classdef MyCaffe < Features.GenericFeature
             obj = obj@Features.GenericFeature();
             
             if nargin<1 || isempty(install_dir)
-                install_dir = getenv('Caffe_ROOT');
+                install_dir = getenv('Caffe_DIR');
             else
                 obj.InstallDir = install_dir;
             end
-            addpath(genpath(fullfile(install_dir,'matlab','caffe')));
+            addpath(genpath(fullfile(install_dir,'matlab')));
             
             if nargin<2 || isempty(mode)
                 use_gpu = 0;

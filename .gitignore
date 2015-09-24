@@ -20,8 +20,12 @@
 *.out
 *.app
 
-% Matlab data
+# Matlab data
 *.mat
+*.asv
 
-% Other data
+# Other data
 *.ods
+
+# Mac generated files
+*.DS_Store

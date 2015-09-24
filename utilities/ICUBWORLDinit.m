@@ -220,7 +220,37 @@ elseif strcmp(dataset_name,'iCubWorld20')
         'carlo_household_right'
         };
     
-elseif strcmp(dataset_name,'iCubWorld30')
+elseif strcmp(dataset_name,'iCubWorld28')
+    
+    categories = {...
+        'plate'
+        'laundry-detergent'
+        'cup'
+        'soap'
+        'sponge'
+        'sprayer'
+        'dishwashing-detergent'
+        };
+
+    objects_per_cat = 4;
+    
+    objects = repmat(categories, objects_per_cat, 1);
+    objects = objects(:);
+    objects = strcat(objects, cellstr(num2str(repmat((1:objects_per_cat)', length(categories), 1))));
+
+    LUT_cat_obj = [(1:length(objects))'  repmat((1:length(categories))', objects_per_cat, 1)];
+    
+    tasks = { ...
+        ''
+        };   
+    
+    modalities = { ...
+        'day1'
+        'day2'
+        'day3'
+        'day4'
+        };
+    elseif strcmp(dataset_name,'iCubWorld30')
     
     categories = {...
         'dish'
