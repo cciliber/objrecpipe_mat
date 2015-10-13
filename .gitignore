@@ -29,3 +29,6 @@
 
 # Mac generated files
 *.DS_Store
+
+# Linux generated files 
+*.*~
