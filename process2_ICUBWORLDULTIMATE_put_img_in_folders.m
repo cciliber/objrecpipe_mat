@@ -6,13 +6,15 @@ root_dir = '/media/giulia/DATA/ICUBWORLD_ULTIMATE';
 
 %%
 
-fifty_group = 2;
-day = 4;
-camera = 'left';
+fifty_group = 4;
+day = 8;
+camera = 'right';
 
 session_dir = fullfile(root_dir, ['ICUBWORLD_' num2str(fifty_group)], ['day' num2str(day)]);
 
-out_dir = fullfile('/media/giulia/DATA/ICUBWORLD_ULTIMATE_folderized', ['day' num2str(day)], camera);
+out_dir = fullfile('/media/giulia/MyPassport/ICUBWORLD_ULTIMATE_folderized_png', ['day' num2str(day)], camera);
+
+out_filext = '.png';
 
 if exist(out_dir, 'dir')
    error('out_dir already existing!!!!!');
@@ -84,10 +86,16 @@ for ii=1:length(dir_list)
             
             % copy file
             src = fullfile(curr_dir, 'imgs', camera, [filename filext]);
-            dst = fullfile(newdir, [filename filext]);
-            movefile(src, dst);
-        
-            disp(idx);
+            dst = fullfile(newdir, [filename out_filext]);
+            %movefile(src, dst);
+            
+            I = imread(src);
+            imwrite(I, dst);
+            delete(src);
+            
+            if mod(idx,500)==0 || idx==length(t_img_info{1})
+                disp(idx);
+            end
             
 %             % update registry file
 %             

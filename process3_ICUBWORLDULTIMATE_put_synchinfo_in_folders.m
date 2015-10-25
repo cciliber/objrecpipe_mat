@@ -2,12 +2,12 @@ FEATURES_DIR = '/home/giulia/REPOS/objrecpipe_mat';
 addpath(genpath(FEATURES_DIR));
 
 %%
-root_dir = '/media/giulia/DATA/ICUBWORLD_ULTIMATE';
+root_dir = '/media/giulia/Elements/ICUBWORLD_ULTIMATE';
 
 %%
 
-fifty_group = 4;
-day = 8;
+fifty_group = 1;
+day = 2;
 camera = 'right';
 
 session_dir = fullfile(root_dir, ['ICUBWORLD_' num2str(fifty_group)], ['day' num2str(day)]);
@@ -16,9 +16,6 @@ out_dir = fullfile('/media/giulia/MyPassport/ICUBWORLD_ULTIMATE_folderized_png',
 
 out_filext = '.png';
 
-% output registry with updated img paths
-ofile_association = fullfile(out_dir, 'img_info.txt');
-ofile_folderlist = fullfile(out_dir, 'folder_list.txt');
 %%
 
 dir_list = strsplit(ls(session_dir));
@@ -101,8 +98,6 @@ t_img_info(strcmp(t_img_info,'skip'))=[];
 
 %% write the updated registry file
 
-ofid_association = fopen(ofile_association, 'w');
-
 idxstart = 1;
 
 for ii=1:length(dir_list)
@@ -127,41 +122,57 @@ for ii=1:length(dir_list)
      end
 
     [~, filenames, filext] = cellfun(@fileparts, t_img_info_current{1}, 'UniformOutput', 0);
+    t_img_info_current{1} = strcat(filenames, out_filext);
     
-    t_img_info_current{1} = cellfun(@fullfile, t_img_info(idxstart:(idxstart+(length(t_img_info_current{1})-1))), strcat(filenames, out_filext), 'UniformOutput', 0);
+    % first iteration out of for cycle
+    idx=1;
+    ofile_association = fullfile(out_dir, t_img_info{idxstart+idx-1}, 'img_info.txt');
+    ofid_association = fopen(ofile_association, 'w');
     
-    idxstart = length(t_img_info_current{1}) + 1; 
-    
-    for idx=1:length(t_img_info_current{1})
+    if strcmp(camera, 'left')
+        fprintf(ofid_association, '%s %.6f %.6f %d %d %d %d %d %d %d\n', t_img_info_current{1}{idx}, t_img_info_current{2}(idx), t_img_info_current{3}(idx), ...
+            t_img_info_current{4}(idx), t_img_info_current{5}(idx), t_img_info_current{6}(idx), ...
+            t_img_info_current{7}(idx), t_img_info_current{8}(idx), t_img_info_current{9}(idx), t_img_info_current{10}(idx));
+    elseif strcmp(camera, 'right')
+        fprintf(ofid_association, '%s %.6f %.6f %d %d\n', t_img_info_current{1}{idx}, t_img_info_current{2}(idx), t_img_info_current{3}(idx), ...
+            t_img_info_current{4}(idx), t_img_info_current{5}(idx));
+    end
         
-        if ~strncmp(t_img_info_current{1}{idx}, 'skip', 4)
-            if strcmp(camera, 'left')
-                fprintf(ofid_association, '%s %.6f %.6f %d %d %d %d %d %d %d\n', t_img_info_current{1}{idx}, t_img_info_current{2}(idx), t_img_info_current{3}(idx), ...
-                    t_img_info_current{4}(idx), t_img_info_current{5}(idx), t_img_info_current{6}(idx), ...
-                    t_img_info_current{7}(idx), t_img_info_current{8}(idx), t_img_info_current{9}(idx), t_img_info_current{10}(idx));
-            elseif strcmp(camera, 'right')
-                fprintf(ofid_association, '%s %.6f %.6f %d %d\n', t_img_info_current{1}{idx}, t_img_info_current{2}(idx), t_img_info_current{3}(idx), ...
-                    t_img_info_current{4}(idx), t_img_info_current{5}(idx));
-            end
+    for idx=2:length(t_img_info_current{1})
+        
+        if ~strcmp(t_img_info(idxstart+idx-1),t_img_info(idxstart+idx-2))
+            fclose(ofid_association);
+            ofile_association = fullfile(out_dir, t_img_info{idxstart+idx-1}, 'img_info.txt');
+            ofid_association = fopen(ofile_association, 'w');
         end
         
+        if strcmp(camera, 'left')
+            fprintf(ofid_association, '%s %.6f %.6f %d %d %d %d %d %d %d\n', t_img_info_current{1}{idx}, t_img_info_current{2}(idx), t_img_info_current{3}(idx), ...
+                t_img_info_current{4}(idx), t_img_info_current{5}(idx), t_img_info_current{6}(idx), ...
+                t_img_info_current{7}(idx), t_img_info_current{8}(idx), t_img_info_current{9}(idx), t_img_info_current{10}(idx));
+        elseif strcmp(camera, 'right')
+            fprintf(ofid_association, '%s %.6f %.6f %d %d\n', t_img_info_current{1}{idx}, t_img_info_current{2}(idx), t_img_info_current{3}(idx), ...
+                t_img_info_current{4}(idx), t_img_info_current{5}(idx));
+        end 
+
     end
     
+     idxstart = idxstart + length(t_img_info_current{1});
+     
 end
 
-    
-%%
-
-fclose(ofid_association);
+fclose(fid_association);
 
 %%
 
-folder_list = unique(t_img_info, 'stable');
-
-ofid_folderlist = fopen(ofile_folderlist,'w');
-
-for ff=1:length(folder_list)
-    fprintf(ofid_folderlist, '%s\n', folder_list{ff});
-end
-
-fclose(ofid_folderlist);
+% ofile_folderlist = fullfile(out_dir, 'folder_list.txt');
+% 
+% folder_list = unique(t_img_info, 'stable');
+% 
+% ofid_folderlist = fopen(ofile_folderlist,'w');
+% 
+% for ff=1:length(folder_list)
+%     fprintf(ofid_folderlist, '%s\n', folder_list{ff});
+% end
+% 
+% fclose(ofid_folderlist);
