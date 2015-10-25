@@ -1,6 +1,8 @@
-function ICUBWORLDopts = ICUBWORLDinit(dataset_name)
+function ICUBWORLDopts = ICUBWORLDinit(dataset_info)
 
 clear ICUBWORLDopts
+
+[filepath, dataset_name, fileext] = fileparts(dataset_info);
 
 if strcmp(dataset_name,'iCubWorld0')
     
@@ -250,6 +252,7 @@ elseif strcmp(dataset_name,'iCubWorld28')
         'day3'
         'day4'
         };
+    
     elseif strcmp(dataset_name,'iCubWorld30')
     
     categories = {...
@@ -280,35 +283,43 @@ elseif strcmp(dataset_name,'iCubWorld28')
         'mercoledi24'
         'venerdi26'
         };
-elseif strcmp(dataset_name,'iCubWorld28')
     
-    categories = {...
-        'plate'
-        'laundry-detergent'
-        'cup'
-        'soap'
-        'sponge'
-        'sprayer'
-        'dishwashing-detergent'
-        };
+elseif strcmp(dataset_name,'iCubWorldUltimate')
+    
+    fid = fopen(dataset_info);
+    infos = textscan(fid, '%s %s %q %s %s', 'TreatAsEmpty', 'skip', 'EmptyValue', -1);
+    fclose(fid);
+    
+    categories = infos{1};
+    wordnet_queries = infos{2};
+    wordnet_descriptions = infos{3};
+    imagenet_categories = infos{4};
+    imagenet_wnids = infos{5};
 
-    objects_per_cat = 4;
+    objects_per_cat = 10;
     
-    objects = repmat(categories, objects_per_cat, 1);
+    objects = repmat(categories', objects_per_cat, 1);
     objects = objects(:);
-    objects = strcat(objects, cellstr(num2str(repmat((1:objects_per_cat)', length(categories), 1))));
-
-    LUT_cat_obj = [(1:length(objects))'  repmat((1:length(categories))', objects_per_cat, 1)];
+    tmp = cellstr(num2str(repmat((1:objects_per_cat)', length(categories), 1)));
+    
+    tmp(cellfun(@isempty,strfind(tmp, ' '))) = strcat('_', tmp(cellfun(@isempty,strfind(tmp, ' '))));
+    tmp = strrep(tmp,' ', '_');
+    
+    objects = strcat(objects, tmp);   
+    
+    LUT_cat_obj = repmat(1:length(categories), objects_per_cat, 1);
+    LUT_cat_obj = [ (1:length(objects))' LUT_cat_obj(:) ];
     
     tasks = { ...
         ''
         };   
     
     modalities = { ...
-        'day1'
-        'day2'
-        'day3'
-        'day4'
+        'scale'
+        'rot2d'
+        'rot3d'
+        'transl'
+        'mix'
         };
 else
     disp('Name does not match any existing dataset, setting dataset parameters to void.');
@@ -334,7 +345,13 @@ else
         };   
 end
 
-ICUBWORLDopts.categories = containers.Map (categories, 1:length(categories));  
+ICUBWORLDopts.categories = containers.Map (categories, 1:length(categories)); 
+ICUBWORLDopts.wordnet_queries = containers.Map (categories, wordnet_queries); 
+ICUBWORLDopts.wordnet_descriptions = containers.Map (wordnet_queries, wordnet_descriptions); 
+ICUBWORLDopts.imagenet_wnids = containers.Map (wordnet_descriptions, imagenet_wnids); 
+ICUBWORLDopts.imagenet_categories = containers.Map (imagenet_wnids, imagenet_categories); 
+
+
 ICUBWORLDopts.objects = containers.Map (objects, 1:length(objects));  
 ICUBWORLDopts.tasks = containers.Map (tasks, 1:length(tasks)); 
 ICUBWORLDopts.modalities = containers.Map (modalities, 1:length(modalities));  
