@@ -2,7 +2,7 @@ FEATURES_DIR = '/home/giulia/REPOS/objrecpipe_mat';
 addpath(genpath(FEATURES_DIR));
 
 %%
-root_dir = '/media/giulia/DATA/ICUBWORLD_ULTIMATE';
+root_dir = '/media/giulia/Elements/ICUBWORLD_ULTIMATE';
 
 %%
 fifty_group = 'ICUBWORLD_1';

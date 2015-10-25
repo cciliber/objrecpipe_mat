@@ -68,11 +68,11 @@ classdef GenericFeature < handle %matlab.mixin.Copyable %hgsetget
                     if isempty(out_ext) && isempty(labelslist) 
                         fprintf(fid, '%s\n', object.Registry{line_idx});
                     elseif isempty(labelslist) 
-                        fprintf(fid, '%s\n', [object.Registry{line_idx} out_ext]);
+                        fprintf(fid, '%s\n', [object.Registry{line_idx}(1:(end-4)) out_ext]);
                     elseif isempty(out_ext)
                         fprintf(fid, '%s\n', [object.Registry{line_idx} ' ' labelslist{object.Y(line_idx)}]);
                     else
-                        fprintf(fid, '%s\n', [object.Registry{line_idx} out_ext  ' ' labelslist{object.Y(line_idx)}]);
+                        fprintf(fid, '%s\n', [object.Registry{line_idx}(1:(end-4)) out_ext  ' ' labelslist{object.Y(line_idx)}]);
                     end
                 end
                 fclose(fid);
@@ -133,9 +133,10 @@ classdef GenericFeature < handle %matlab.mixin.Copyable %hgsetget
                         if tobeadded
                             
                            file_src = fullfile(current_path, files(idx_file).name);
-                           [file_dir, file_name, ~] = fileparts(file_src);
+                           %[file_dir, file_name, ~] = fileparts(file_src);
                            obj.ExampleCount = obj.ExampleCount + 1;
-                           obj.Registry{obj.ExampleCount,1} = fullfile(file_dir, file_name);
+                           %obj.Registry{obj.ExampleCount,1} = fullfile(file_dir, file_name);
+                           obj.Registry{obj.ExampleCount,1} = file_src;
                            
                         end
 
