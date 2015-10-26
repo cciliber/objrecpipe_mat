@@ -5,9 +5,9 @@ addpath(genpath(FEATURES_DIR));
 
 %%
 
-day = 8;
+day = 7;
 
-in_root_path = fullfile('/media/giulia/MyPassport/ICUBWORLD_ULTIMATE_BB_disp', ['day' num2str(day)]);
+in_root_path = fullfile('/media/giulia/DATA/ICUBWORLD_ULTIMATE_folderized_jpg', ['day' num2str(day)]);
 
 %%
 
@@ -42,7 +42,7 @@ feat.reproduce_tree(out_root_path_bb_disp);
 feat.Registry(strcmp(camera, 'left')) = [];
 img_paths(strcmp(camera, 'left')) = [];
 img_exts(strcmp(camera, 'left')) = [];
-
+camera(strcmp(camera, 'left')) = [];
 
 reg_files = feat.Registry( (strcmp(img_exts, '.txt') & (~strcmp(camera, 'right'))) );
 reg_files_path = img_paths( (strcmp(img_exts, '.txt') & (~strcmp(camera, 'right'))) );
@@ -108,8 +108,8 @@ for ii=1:length(feat.Registry)
 
     if img_info{12}(img_counter)==0 && img_info{13}(img_counter)==0 && img_info{14}(img_counter)==0 && img_info{15}(img_counter)==0
     
-        xminL = xc - (widthL-1)/2;
-        yminL = yc - (heightL-1)/2;
+        xminL = xcL - (widthL-1)/2;
+        yminL = ycL - (heightL-1)/2;
     
     else
     

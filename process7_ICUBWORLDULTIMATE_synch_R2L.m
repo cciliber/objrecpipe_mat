@@ -8,7 +8,7 @@ addpath(genpath(FEATURES_DIR));
 day = 7;
 
 in_root_path = fullfile('/media/giulia/DATA/ICUBWORLD_ULTIMATE_folderized_jpg', ['day' num2str(day)]);
-out_root_path = fullfile('/media/giulia/MyPassport/ICUBWORLD_ULTIMATE_BB_disp', ['day' num2str(day)]);
+out_root_path = fullfile('/media/giulia/DATA/ICUBWORLD_ULTIMATE_folderized_jpg', ['day' num2str(day)]);
 
 feat = Features.GenericFeature();
 feat.assign_registry_and_tree_from_folder(in_root_path, [], [], [], []);
