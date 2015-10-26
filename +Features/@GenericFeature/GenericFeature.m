@@ -116,7 +116,7 @@ classdef GenericFeature < handle %matlab.mixin.Copyable %hgsetget
                                 file_src = fullfile(current_path, files(idx_file).name);
                                 [file_dir, ~, ~] = fileparts(file_src);
                                 
-                                file_dir_splitted = strsplit(file_dir, ['\' filesep]);
+                                file_dir_splitted = strsplit(file_dir, '/');
                                 
                                 tobeadded = 0;
                                 for s=1:length(objects_list)
