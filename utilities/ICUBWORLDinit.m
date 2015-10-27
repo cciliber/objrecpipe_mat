@@ -315,11 +315,11 @@ elseif strcmp(dataset_name,'iCubWorldUltimate')
         };   
     
     modalities = { ...
-        'scale'
-        'rot2d'
-        'rot3d'
-        'transl'
-        'mix'
+        'SCALE'
+        'ROT2D'
+        'ROT3D'
+        'TRANSL'
+        'MIX'
         };
 else
     disp('Name does not match any existing dataset, setting dataset parameters to void.');

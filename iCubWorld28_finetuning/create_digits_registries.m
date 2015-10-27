@@ -14,7 +14,7 @@ addpath(genpath(FEATURES_DIR));
 
 %% dataset
 
-dset_path = '/data/giulia/DATASETS/iCubWorld28';
+dset_path = '/data/giulia/DATASETS/iCubWorld28_jpg';
 
 ICUBWORLDopts = ICUBWORLDinit('iCubWorld28');
 
