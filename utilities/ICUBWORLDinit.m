@@ -18,10 +18,6 @@ if strcmp(dataset_name,'iCubWorld0')
         'spray'
         'turtle'
         };
-
-    tasks = { ...
-        ''
-        };
     
     modalities = { ...
         'human'
@@ -30,6 +26,8 @@ if strcmp(dataset_name,'iCubWorld0')
 
     objects_per_cat = 1;
     
+    ICUBWORLDopts.modalities = containers.Map (modalities, 1:length(modalities));  
+
 elseif strcmp(dataset_name,'Groceries')
    
     categories = { ...
@@ -88,10 +86,6 @@ elseif strcmp(dataset_name,'Groceries')
         'yomo'
         };
     
-    tasks = { ...
-        ''
-        };
-    
     modalities = { ...
        'demo1'
        'demo2'
@@ -99,6 +93,8 @@ elseif strcmp(dataset_name,'Groceries')
 
     objects_per_cat = 4;
     
+    ICUBWORLDopts.modalities = containers.Map (modalities, 1:length(modalities));  
+
 elseif strcmp(dataset_name,'Groceries_4Tasks')
    
     categories = { ...
@@ -159,6 +155,9 @@ elseif strcmp(dataset_name,'Groceries_4Tasks')
         };
     
     objects_per_cat = 3;
+    
+    ICUBWORLDopts.tasks = containers.Map (tasks, 1:length(tasks)); 
+    ICUBWORLDopts.modalities = containers.Map (modalities, 1:length(modalities));  
 
 elseif strcmp(dataset_name,'Groceries_SingleInstance')
     
@@ -184,14 +183,6 @@ elseif strcmp(dataset_name,'Groceries_SingleInstance')
         'santal'
         };
         
-    tasks = { ...
-        ''
-        };
-    
-    modalities = { ...
-        ''
-        };
-    
     objects_per_cat = 1;
     
     LUT_cat_obj = [];
@@ -214,14 +205,12 @@ elseif strcmp(dataset_name,'iCubWorld20')
     objects = objects(:);
     objects = strcat(objects, '_', cellstr(num2str(repmat((1:objects_per_cat)', length(categories), 1))));
 
-    tasks = { ...
-        ''
-        };
-
     modalities = { ...
         'carlo_household_right'
         };
-    
+   
+    ICUBWORLDopts.modalities = containers.Map (modalities, 1:length(modalities));  
+
 elseif strcmp(dataset_name,'iCubWorld28')
     
     categories = {...
@@ -241,11 +230,7 @@ elseif strcmp(dataset_name,'iCubWorld28')
     objects = strcat(objects, cellstr(num2str(repmat((1:objects_per_cat)', length(categories), 1))));
 
     LUT_cat_obj = [(1:length(objects))'  repmat((1:length(categories))', objects_per_cat, 1)];
-    
-    tasks = { ...
-        ''
-        };   
-    
+   
     modalities = { ...
         'day1'
         'day2'
@@ -253,7 +238,9 @@ elseif strcmp(dataset_name,'iCubWorld28')
         'day4'
         };
     
-    elseif strcmp(dataset_name,'iCubWorld30')
+    ICUBWORLDopts.modalities = containers.Map (modalities, 1:length(modalities));  
+
+elseif strcmp(dataset_name,'iCubWorld30')
     
     categories = {...
         'dish'
@@ -272,11 +259,7 @@ elseif strcmp(dataset_name,'iCubWorld28')
     objects = strcat(objects, cellstr(num2str(repmat((1:objects_per_cat)', length(categories), 1))));
 
     LUT_cat_obj = [(1:length(objects))'  repmat((1:length(categories))', objects_per_cat, 1)];
-    
-    tasks = { ...
-        ''
-        };   
-    
+  
     modalities = { ...
         'lunedi22'
         'martedi23'
@@ -284,10 +267,12 @@ elseif strcmp(dataset_name,'iCubWorld28')
         'venerdi26'
         };
     
+    ICUBWORLDopts.modalities = containers.Map (modalities, 1:length(modalities));  
+
 elseif strcmp(dataset_name,'iCubWorldUltimate')
     
     fid = fopen(dataset_info);
-    infos = textscan(fid, '%s %s %q %s %s', 'TreatAsEmpty', 'skip', 'EmptyValue', -1);
+    infos = textscan(fid, '%s %s %q %s %s');
     fclose(fid);
     
     categories = infos{1};
@@ -302,25 +287,48 @@ elseif strcmp(dataset_name,'iCubWorldUltimate')
     objects = objects(:);
     tmp = cellstr(num2str(repmat((1:objects_per_cat)', length(categories), 1)));
     
-    tmp(cellfun(@isempty,strfind(tmp, ' '))) = strcat('_', tmp(cellfun(@isempty,strfind(tmp, ' '))));
-    tmp = strrep(tmp,' ', '_');
+    %tmp(cellfun(@isempty,strfind(tmp, ' '))) = strcat('_', tmp(cellfun(@isempty,strfind(tmp, ' '))));
+    tmp = strrep(tmp,' ', '');
     
     objects = strcat(objects, tmp);   
     
     LUT_cat_obj = repmat(1:length(categories), objects_per_cat, 1);
     LUT_cat_obj = [ (1:length(objects))' LUT_cat_obj(:) ];
     
-    tasks = { ...
-        ''
+    days = { ...
+        'day1'
+        'day2'
+        'day3'
+        'day4'
+        'day5'
+        'day6'
+        'day7'
+        'day8'
         };   
     
-    modalities = { ...
+    cameras = { ...
+        'left'
+        'right'
+        };
+    
+    transfs = { ...
         'SCALE'
         'ROT2D'
         'ROT3D'
         'TRANSL'
         'MIX'
         };
+    
+    ICUBWORLDopts.Cat_WnQueries = containers.Map (categories, wordnet_queries); 
+    ICUBWORLDopts.WnQueries_WnDescr = containers.Map (wordnet_queries, wordnet_descriptions); 
+    ICUBWORLDopts.WnDescr_ImnetWNIDs = containers.Map (wordnet_descriptions, imagenet_wnids); 
+    ICUBWORLDopts.ImnetWNIDs_ImnetCat = containers.Map (imagenet_wnids(~cellfun(@isempty, imagenet_wnids)), imagenet_categories(~cellfun(@isempty, imagenet_categories))); 
+    ICUBWORLDopts.Cat_ImnetWNIDs = containers.Map (categories, imagenet_wnids); 
+
+    ICUBWORLDopts.Days = containers.Map (days, repmat([1; 2], length(days)/2,1)); 
+    ICUBWORLDopts.Cameras = containers.Map (cameras, 1:length(cameras));  
+    ICUBWORLDopts.Transfs = containers.Map (transfs, 1:length(transfs));  
+    
 else
     disp('Name does not match any existing dataset, setting dataset parameters to void.');
     
@@ -336,24 +344,9 @@ else
     
     LUT_cat_obj = [];
     
-    tasks = { ...
-        ''
-        };   
-    
-    modalities = { ...
-        ''
-        };   
 end
 
-ICUBWORLDopts.categories = containers.Map (categories, 1:length(categories)); 
-ICUBWORLDopts.wordnet_queries = containers.Map (categories, wordnet_queries); 
-ICUBWORLDopts.wordnet_descriptions = containers.Map (wordnet_queries, wordnet_descriptions); 
-ICUBWORLDopts.imagenet_wnids = containers.Map (wordnet_descriptions, imagenet_wnids); 
-ICUBWORLDopts.imagenet_categories = containers.Map (imagenet_wnids, imagenet_categories); 
-
-
-ICUBWORLDopts.objects = containers.Map (objects, 1:length(objects));  
-ICUBWORLDopts.tasks = containers.Map (tasks, 1:length(tasks)); 
-ICUBWORLDopts.modalities = containers.Map (modalities, 1:length(modalities));  
-ICUBWORLDopts.objects_per_cat = objects_per_cat;
-ICUBWORLDopts.LUT_cat_obj = LUT_cat_obj;
+ICUBWORLDopts.Cat = containers.Map (categories, 1:length(categories)); 
+ICUBWORLDopts.Obj = containers.Map (objects, 1:length(objects));  
+ICUBWORLDopts.ObjPerCat = objects_per_cat;
+ICUBWORLDopts.LUT_CatObj = LUT_cat_obj;

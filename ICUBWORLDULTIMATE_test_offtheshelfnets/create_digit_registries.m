@@ -1,4 +1,4 @@
-%% setup 
+%% Setup 
 
 FEATURES_DIR = '/data/giulia/REPOS/objrecpipe_mat';
 
@@ -12,129 +12,69 @@ clear curr_dir;
 
 addpath(genpath(FEATURES_DIR));
 
-%% dataset
+%% ImageNet synsets
 
-dset_path = '/data/giulia/DATASETS/iCubWorldUltimate_centroid_disp';
+imnet_1000synsets_path = '/data/giulia/REPOS/caffe/data/ilsvrc12/synsets.txt';
+fid = fopen(imnet_1000synsets_path);
+imnet_1000synsets = textscan(fid, '%s');
+imnet_1000synsets = imnet_1000synsets{1};
+fclose(fid);
 
-ICUBWORLDopts = ICUBWORLDinit('/data/giulia/DATASETS/iCubWorldUltimate.txt');
+%% Dataset
 
-cat_names = keys(ICUBWORLDopts.categories);
-obj_names = keys(ICUBWORLDopts.objects)';
-tasks = keys(ICUBWORLDopts.tasks);
-modalities = keys(ICUBWORLDopts.modalities);
+dset_path = '/data/giulia/DATASETS/iCubWorldUltimate_bb_disp_finaltree';
+dset_info = '/data/giulia/DATASETS/iCubWorldUltimate.txt';
+dset_name = 'iCubWorldUltimate';
 
-Ncat = ICUBWORLDopts.categories.Count;
-Nobj = ICUBWORLDopts.objects.Count;
-NobjPerCat = ICUBWORLDopts.objects_per_cat;
+ICUBWORLDopts = ICUBWORLDinit(dset_info);
 
-%% output
+cat_names = keys(ICUBWORLDopts.Cat)';
 
-output_dir = fullfile('/data/giulia/DATASETS/iCubWorldUltimate_digit_registries/test_offtheshelfnets');
-check_output_dir(output_dir);
+obj_names = keys(ICUBWORLDopts.Obj)';
 
-%% go!
+Ncat = ICUBWORLDopts.Cat.Count;
+Nobj = ICUBWORLDopts.Obj.Count;
+NobjPerCat = ICUBWORLDopts.ObjPerCat;
 
-% compute
-for ii=2:length(modalities)
+%% Output
+
+out_dir = fullfile('/data/giulia/DATASETS/iCubWorldUltimate_digit_registries/test_offtheshelfnets');
+
+out_ext = '.jpg';
+
+%% Go!
+
+cat_list = [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20];
+
+for cc=cat_list
     
-    loaderTRVAL = Features.GenericFeature();
-    loaderTE = Features.GenericFeature();
-    
-    % split validation/train
-    
-    in_path = fullfile(dset_path, 'train');
-    loaderTRVAL.assign_registry_and_tree_from_folder(in_path, modalities(1:ii)', obj_names, [], []);
-    
-    val_registry = loaderTRVAL.Registry(1:(1/val_frac):end);
-    tr_registry = loaderTRVAL.Registry;
-    tr_registry(1:(1/val_frac):end) = [];
-    
-    val_path = fullfile(output_dir, ['VAL' [modalities{1:ii}] '.txt']);
-    tr_path = fullfile(output_dir, ['TR' [modalities{1:ii}] '.txt']);
-    
-    y_val = create_y(val_registry, obj_names, []);
-    [~, y_val] = max(y_val, [], 2);
-    y_tr = create_y(tr_registry, obj_names, []);
-    [~, y_tr] = max(y_tr, [], 2);
-    
-    [reg_dir, ~, ~] = fileparts(val_path);
-    check_output_dir(reg_dir);
-    fid = fopen(val_path,'w');
+    out_path = fullfile(out_dir, [cat_names{cc} '.txt']);
+    fid = fopen(out_path,'w');
     if (fid==-1)
-        fprintf(2, 'Cannot open file: %s', val_path);
+        fprintf(2, 'Cannot open file: %s', out_path);
     end
-    for line_idx=1:length(y_val)
-        fprintf(fid, '%s\n', [val_registry{line_idx} out_ext  ' ' num2str(y_val(line_idx)-1)]);
-    end
-    fclose(fid);
     
-    [reg_dir, ~, ~] = fileparts(tr_path);
-    check_output_dir(reg_dir);
-    fid = fopen(tr_path,'w');
-    if (fid==-1)
-        fprintf(2, 'Cannot open file: %s', tr_path);
-    end
-    for line_idx=1:length(y_tr)
-        fprintf(fid, '%s\n', [tr_registry{line_idx} out_ext  ' ' num2str(y_tr(line_idx)-1)]);
-    end
-    fclose(fid);
+    loader = Features.GenericFeature();
+    loader.assign_registry_and_tree_from_folder(dset_path, cat_names{cc}, [], [], []);
     
-    % test 
-    
-    out_path = fullfile(output_dir, ['TE' [modalities{1:ii}] '.txt']);
-    in_path = fullfile(dset_path, 'test');
-    loaderTE.assign_registry_and_tree_from_folder(in_path, modalities(1:ii)', obj_names, out_path, out_ext);
-    
-end
+    %scores_dir = fullfile('/data/giulia/DATASETS/iCubWorldUltimate_bb_disp_finaltree_experiments/test_offtheshelfnets/scores/googlenet');    
+    %loader.reproduce_tree(scores_dir); 
 
-for ii=1:length(modalities)
+    [fpaths, fnames, fexts] = cellfun(@fileparts, loader.Registry, 'UniformOutput', false);
     
-    loaderTRVAL = Features.GenericFeature();
-    loaderTE = Features.GenericFeature();
-
-    % split validation/train
+    loader.Registry(strcmp(fexts, '.txt')) = [];
     
-    in_path = fullfile(dset_path, 'train', modalities{ii});
-    loaderTRVAL.assign_registry_and_tree_from_folder(in_path, [], obj_names, [], []);
-    
-    val_registry = loaderTRVAL.Registry(1:(1/val_frac):end);
-    tr_registry = loaderTRVAL.Registry;
-    tr_registry(1:(1/val_frac):end) = [];
-    
-    val_path = fullfile(output_dir, ['VAL' modalities{ii} '.txt']);
-    tr_path = fullfile(output_dir, ['TR' modalities{ii} '.txt']);
-    
-    y_val = create_y(val_registry, obj_names, []);
-    [~, y_val] = max(y_val, [], 2);
-    y_tr = create_y(tr_registry, obj_names, []);
-    [~, y_tr] = max(y_tr, [], 2);
-    
-    [reg_dir, ~, ~] = fileparts(val_path);
-    check_output_dir(reg_dir);
-    fid = fopen(val_path,'w');
-    if (fid==-1)
-        fprintf(2, 'Cannot open file: %s', val_path);
+    cat_synset = ICUBWORLDopts.Cat_ImnetWNIDs(cat_names{cc});
+    if ~isempty(cat_synset)
+        Ytrue = strcmp(imnet_1000synsets, cat_synset);
+        Ylabel = find(Ytrue)-1;
+    else
+        Ylabel = -1;
     end
-    for line_idx=1:length(y_val)
-        fprintf(fid, '%s\n', [val_registry{line_idx} out_ext  ' ' num2str(y_val(line_idx)-1)]);
+    
+    for line_idx=1:length(loader.Registry)
+        fprintf(fid, '%s\n', [loader.Registry{line_idx}(1:(end-4)) out_ext  ' ' num2str(Ylabel)]);
     end
+    
     fclose(fid);
-    
-    [reg_dir, ~, ~] = fileparts(tr_path);
-    check_output_dir(reg_dir);
-    fid = fopen(tr_path,'w');
-    if (fid==-1)
-        fprintf(2, 'Cannot open file: %s', tr_path);
-    end
-    for line_idx=1:length(y_tr)
-        fprintf(fid, '%s\n', [tr_registry{line_idx} out_ext  ' ' num2str(y_tr(line_idx)-1)]);
-    end
-    fclose(fid);
-    
-    % test
-    
-    out_path = fullfile(output_dir, ['TE' modalities{ii} '.txt']);
-    in_path = fullfile(dset_path, 'test', modalities{ii});
-    loaderTE.assign_registry_and_tree_from_folder(in_path, [], obj_names, out_path, out_ext);
-    
 end
