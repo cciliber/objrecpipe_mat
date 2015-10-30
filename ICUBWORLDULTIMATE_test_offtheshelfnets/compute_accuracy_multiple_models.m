@@ -47,8 +47,8 @@ reg_dir = '/data/giulia/DATASETS/iCubWorldUltimate_digit_registries/test_offthes
 
 output_dir = '/data/giulia/DATASETS/iCubWorldUltimate_centroid_disp_finaltree_experiments/test_offtheshelfnets/predictions';
 
-model = 'googlenet'; 
-%model = 'bvlc_reference_caffenet';
+%model = 'googlenet'; 
+model = 'bvlc_reference_caffenet';
 %model = 'vgg';
 
 
@@ -88,7 +88,7 @@ for cc=cat_list
     more_freq_prediction{cc} = zeros(NobjPerCat, Ntransfs, 2, Ncameras);
     accuracy{cc} = zeros(NobjPerCat, Ntransfs, 2, Ncameras);
     
-    fid = fopen(fullfile(output_dir, [cat_names{cc} '_' num2str(Ytrue(cc)) '_pred.txt']), 'w');
+    fid = fopen(fullfile(output_dir, model, [cat_names{cc} '_' num2str(Ytrue(cc)) '_pred.txt']), 'w');
     line_idx = cellfun(@fileparts, fpaths, 'UniformOutput', false);
     [~, ~, ic] = unique(line_idx, 'stable'); 
     % [C,ia,ic] = unique(A) 
@@ -178,13 +178,13 @@ for cc=cat_list
 
 end
 
-save(fullfile(output_dir, 'all.mat'), 'prediction', 'prediction_yesno', 'accuracy', 'more_freq_prediction');
+save(fullfile(output_dir, model, 'all.mat'), 'prediction', 'prediction_yesno', 'accuracy', 'more_freq_prediction');
 
 %%
 
 Ytrue = [0 921 487 985 0 0 584 673 504 0 709 711 761 446 804 0 0 0 837 893]';
 
-DATA = load(fullfile(output_dir, 'all.mat'), 'prediction', 'prediction_yesno', 'accuracy', 'more_freq_prediction');
+DATA = load(fullfile(output_dir, model, 'all.mat'), 'prediction', 'prediction_yesno', 'accuracy', 'more_freq_prediction');
 prediction = DATA.prediction;
 prediction_yesno = DATA.prediction_yesno;
 accuracy = DATA.accuracy; 
@@ -230,7 +230,7 @@ for choosetransf=keys(ICUBWORLDopts.Transfs)
     end
     
     suptitle(cell2mat(choosetransf) )
-    saveas(gcf, fullfile(output_dir, [cell2mat(choosetransf) '.fig']));
+    saveas(gcf, fullfile(output_dir, model, 'figs', [cell2mat(choosetransf) '.fig']));
     
 end
 
@@ -269,7 +269,7 @@ set(gca, 'XTickLabel', xtk(:));
 N=unique(totalMM);
 colormap(jet(length(N)))
 colorbar
-saveas(gcf, fullfile(output_dir, 'more_freq_prediciton.fig'));
+saveas(gcf, fullfile(output_dir, model, 'figs', 'more_freq_prediciton.fig'));
 
 %% more_freq_prediction over day & cam
 
@@ -306,7 +306,7 @@ set(gca, 'XTickLabel', xtk(:));
 N=unique(totalMM);
 colormap(jet(length(N)))
 colorbar
-saveas(gcf, fullfile(output_dir, 'more_freq_prediciton_meanover_daycam.fig'));
+saveas(gcf, fullfile(output_dir, model, 'figs', 'more_freq_prediciton_meanover_daycam.fig'));
 
 %% accuracy
 
@@ -340,7 +340,7 @@ set(gca, 'XTickLabel', xtk(:));
 
 colormap(jet)
 colorbar
-saveas(gcf, fullfile(output_dir, 'accuracy.fig'));
+saveas(gcf, fullfile(output_dir, model, 'figs', 'accuracy.fig'));
 
 %% accuracy over day & cam
 
@@ -374,4 +374,4 @@ set(gca, 'XTickLabel', xtk(:));
 
 colormap(jet)
 colorbar
-saveas(gcf, fullfile(output_dir, 'accuracy_meanover_daycam.fig'));
+saveas(gcf, fullfile(output_dir, model, 'figs', 'accuracy_meanover_daycam.fig'));
