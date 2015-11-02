@@ -22,7 +22,7 @@ fclose(fid);
 
 %% Dataset
 
-dset_path = '/data/giulia/DATASETS/iCubWorldUltimate_centroid_disp_finaltree';
+dset_path = '/data/giulia/MyPassport/iCubWorldUltimate_bb_disp_finaltree';
 dset_info = '/data/giulia/DATASETS/iCubWorldUltimate.txt';
 dset_name = 'iCubWorldUltimate';
 
@@ -40,15 +40,15 @@ Ncameras = ICUBWORLDopts.Cameras.Count;
 
 %% IO
 
-input_dir = '/data/giulia/DATASETS/iCubWorldUltimate_centroid_disp_finaltree_experiments/test_offtheshelfnets/scores';
+input_dir = '/data/giulia/DATASETS/iCubWorldUltimate_bb_disp_finaltree_experiments/test_offtheshelfnets/scores';
 check_input_dir(input_dir);
 
 reg_dir = '/data/giulia/DATASETS/iCubWorldUltimate_digit_registries/test_offtheshelfnets';
 
-output_dir = '/data/giulia/DATASETS/iCubWorldUltimate_centroid_disp_finaltree_experiments/test_offtheshelfnets/predictions';
+output_dir = '/data/giulia/DATASETS/iCubWorldUltimate_bb_disp_finaltree_experiments/test_offtheshelfnets/predictions';
 
-%model = 'googlenet'; 
-model = 'bvlc_reference_caffenet';
+model = 'googlenet'; 
+%model = 'bvlc_reference_caffenet';
 %model = 'vgg';
 
 
@@ -189,6 +189,8 @@ prediction = DATA.prediction;
 prediction_yesno = DATA.prediction_yesno;
 accuracy = DATA.accuracy; 
 more_freq_prediction = DATA.more_freq_prediction; 
+
+clear DATA;
 
 %% prediction yes no
 

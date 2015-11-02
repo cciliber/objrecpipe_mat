@@ -33,9 +33,7 @@ function Ypred = kNNClassify(Xtr, Ytr, k, Xte)
         
         [~, I] = sort(SortdDistMat);
         idx = I(1:k);
-        val = sum(Ytr(idx))/k;
-
-        Ypred(j) = sign(val);
+        Ypred(j) = mode(Ytr(idx));
     end
 end
 
