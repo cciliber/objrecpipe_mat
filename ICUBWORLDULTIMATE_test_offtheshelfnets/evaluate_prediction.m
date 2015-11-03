@@ -1,68 +1,161 @@
 %% Setup 
 
 FEATURES_DIR = '/data/giulia/REPOS/objrecpipe_mat';
-
-run('/data/REPOS/GURLS/gurls/utils/gurls_install.m');
-
-curr_dir = pwd;
-cd('/data/REPOS/vlfeat-0.9.20/toolbox');
-vl_setup;
-cd(curr_dir);
-clear curr_dir;
-
 addpath(genpath(FEATURES_DIR));
 
-%% ImageNet synsets
+gurls_setup('/data/REPOS/GURLS/');
+vl_feat_setup();
 
-imnet_1000synsets_path = '/data/giulia/REPOS/caffe/data/ilsvrc12/synsets.txt';
-fid = fopen(imnet_1000synsets_path);
-imnet_1000synsets = textscan(fid, '%s');
-imnet_1000synsets = imnet_1000synsets{1};
-fclose(fid);
+%% Dataset info
 
-%% Dataset
-
-dset_path = '/data/giulia/MyPassport/iCubWorldUltimate_bb_disp_finaltree';
-dset_info = '/data/giulia/DATASETS/iCubWorldUltimate.txt';
+dset_info = fullfile(FEATURES_DIR, 'ICUBWORLDULTIMATE_test_offtheshelfnets', 'iCubWorldUltimate.txt');
 dset_name = 'iCubWorldUltimate';
 
-ICUBWORLDopts = ICUBWORLDinit(dset_info);
+opts = ICUBWORLDinit(dset_info);
 
-cat_names = keys(ICUBWORLDopts.Cat)';
-obj_names = keys(ICUBWORLDopts.Obj)';
+cat_names = keys(opts.Cat)';
+obj_names = keys(opts.Obj)';
+transf_names = keys(opts.Transfs)';
+day_names = keys(opts.Days)';
+camera_names = keys(opts.Cameras)';
 
-Ncat = ICUBWORLDopts.Cat.Count;
-Nobj = ICUBWORLDopts.Obj.Count;
-NobjPerCat = ICUBWORLDopts.ObjPerCat;
-Ntransfs = ICUBWORLDopts.Transfs.Count;
-%Ndays = ICUBWORLDopts.Days.Count;
-Ncameras = ICUBWORLDopts.Cameras.Count;
+Ncat = opts.Cat.Count;
+Nobj = opts.Obj.Count;
+NobjPerCat = opts.ObjPerCat;
+Ntransfs = opts.Transfs.Count;
+Ndays = opts.Days.Count;
+Ncameras = opts.Cameras.Count;
 
 %% IO
-
-input_dir = '/data/giulia/DATASETS/iCubWorldUltimate_bb_disp_finaltree_experiments/test_offtheshelfnets/scores';
-check_input_dir(input_dir);
-
-reg_dir = '/data/giulia/DATASETS/iCubWorldUltimate_digit_registries/test_offtheshelfnets';
-
-output_dir = '/data/giulia/DATASETS/iCubWorldUltimate_bb_disp_finaltree_experiments/test_offtheshelfnets/predictions';
 
 model = 'googlenet'; 
 %model = 'bvlc_reference_caffenet';
 %model = 'vgg';
 
+dset_dir = '/data/giulia/DATASETS/iCubWorldUltimate_centroid_disp_finaltree';
+%dset_dir = '/data/giulia/DATASETS/iCubWorldUltimate_bb_disp_finaltree';
+%dset_dir = '/data/giulia/DATASETS/iCubWorldUltimate_centroid256_disp_finaltree';
+%dset_dir = '/data/giulia/DATASETS/iCubWorldUltimate_bb30_disp_finaltree';
 
-%% go!
+reg_dir = '/data/giulia/DATASETS/iCubWorldUltimate_digit_registries/test_offtheshelfnets';
+check_input_dir(reg_dir);
 
-cat_list = [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20];
+input_dir = fullfile([dset_dir '_experiments'], 'test_offtheshelfnets', 'predictions', model);
+check_input_dir(input_dir);
 
-prediction = cell(Ncat,1);
-more_freq_prediction = cell(Ncat,1);
-prediction_yesno = cell(Ncat,1);
-accuracy = cell(Ncat,1);
+output_dir = fullfile([dset_dir '_experiments'], 'test_offtheshelfnets', 'predictions', model);
+check_output_dir(output_dir);
 
-Ytrue = zeros(Ncat, 1);
+%% Read the registries
 
+load(fullfile(output_dir, 'REGeven.mat'));
+REG = REGeven;
+clear REGeven;
+load(fullfile(output_dir, 'Xeven.mat'));
+X = Xeven;
+clear Xeven;
+
+load(fullfile(output_dir, 'Yeven_none.mat'));
+Y = Yeven_none;
+clear Yeven_none;
+load(fullfile(output_dir, 'Yeven.mat'));
+Ytrue = Yeven;
+clear Yeven;
+
+
+% load(fullfile(output_dir, 'REGodd.mat'));
+% REG = REGodd;
+% clear REGodd;
+% load(fullfile(output_dir, 'Xodd.mat'));
+% X = Xodd;
+% clear Xodd;
+% 
+% load(fullfile(output_dir, 'Yodd_none.mat'));
+% Y = Yodd_none;
+% clear Yodd_none;
+% load(fullfile(output_dir, 'Yodd.mat'));
+% Ytrue = Yodd;
+% clear Yodd;
+
+%% Populate the cell structures
+
+scores = cell(Ncat,1);
+pred = cell(Ncat,1);
+trueclass = cell(Ncat,1);
+pred_yesno = cell(Ncat, 1);
+acc = cell(Ncat,1);
+
+pred_avg = cell(Ncat,1);
+pred_mode = cell(Ncat,1);
+
+pred_avg_daycam = cell(Ncat,1);
+acc_avg_daycam = cell(Ncat,1);
+pred_mode_daycam = cell(Ncat,1);
+acc_mode_daycam = cell(Ncat,1);
+
+for cc=1:Ncat
+    if ~isempty(REG{cc})
+        
+        scores{cc} = cell(NobjPerClass, Ntransfs, Ndays, Ncameras);
+        pred{cc} = cell(NobjPerClass, Ntransfs, Ndays, Ncameras);
+        trueclass{cc} = cell(NobjPerClass, Ntransfs, Ndays, Ncameras);
+        pred_yesno{cc} = cell(NobjPerClass, Ntransfs, Ndays, Ncameras);
+        acc{cc} = zeros(NobjPerClass, Ntransfs, Ndays, Ncameras);
+        
+        pred_avg{cc} = zeros(NobjPerClass, Ntransfs, Ndays, Ncameras);
+        pred_mode{cc} = zeros(NobjPerClass, Ntransfs, Ndays, Ncameras);
+        
+        REG{cc} = cellfun(@fileparts, REG{cc}, 'UniformOutput', 'false');
+        
+        [dirlist, ia, ic] = unique(REG{cc}, 'stable');
+        % [C,ia,ic] = unique(A) 
+        % C = A(ia)
+        % A = C(ic)
+       
+        dirlist_splitted = regexp(dirlist, '/', 'split');
+        dirlist_splitted = vertcat(dirlist_splitted{:});
+        
+        Nframes = zeros(length(dirlist),1);
+        for ii=1:length(dirlist) 
+            Nframes(ii) = sum(ic==ii);
+        end
+        startend = zeros(length(dirlist)+1,1);
+        startend(2:end) = cumsum(Nframes);
+        
+        for ii=1:(length(dirlist)-1)
+            
+            obj = dirlist_splitted(ii,1);
+            transf = dirlist_splitted(ii,2);
+            day = dirlist_splitted(ii,3);
+            cam = dirlist_splitted(ii,4);
+            
+            idx_start = cumsum(ii)+1;
+            idx_end = cumsum(ii+1);
+            
+            x = X{cc}(idx_start:idx_end, :);
+            y = Y{cc}(idx_start:idx_end);
+            ytrue = Ytrue{cc}(idx_start:idx_end);
+            
+            scores{cc}{opts.Obj(obj), opts.Transfs(transf), opts.Days(day), opts.Cameras(cam)} = x;
+            pred{cc}{opts.Obj(obj), opts.Transfs(transf), opts.Days(day), opts.Cameras(cam)} = y;
+            trueclass{cc}{opts.Obj(obj), opts.Transfs(transf), opts.Days(day), opts.Cameras(cam)} = ytrue;
+            pred_yesno{cc}{opts.Obj(obj), opts.Transfs(transf), opts.Days(day), opts.Cameras(cam)} = (y == ytrue);
+            
+            acc{cc}(opts.Obj(obj), opts.Transfs(transf), opts.Days(day), opts.Cameras(cam)) = compute_accuracy(ytrue, y, 'gurls');
+            
+            pred_avg{cc}(opts.Obj(obj), opts.Transfs(transf), opts.Days(day), opts.Cameras(cam)) = max(mean(x, 1));
+            pred_mode{cc}(opts.Obj(obj), opts.Transfs(transf), opts.Days(day), opts.Cameras(cam)) = mode(y);
+            
+        end
+      
+    end
+end
+
+ pred_avg_daycam{cc} = zeros(NobjPerClass, Ntransfs);
+        acc_avg_daycam{cc} = zeros(NobjPerClass, Ntransfs);
+        pred_mode_daycam{cc} = zeros(NobjPerClass, Ntransfs);
+        acc_mode_daycam{cc} = zeros(NobjPerClass, Ntransfs);
+        
 for cc=cat_list
 
     reg_path = fullfile(reg_dir, [cat_names{cc} '.txt']);
@@ -91,9 +184,7 @@ for cc=cat_list
     fid = fopen(fullfile(output_dir, model, [cat_names{cc} '_' num2str(Ytrue(cc)) '_pred.txt']), 'w');
     line_idx = cellfun(@fileparts, fpaths, 'UniformOutput', false);
     [~, ~, ic] = unique(line_idx, 'stable'); 
-    % [C,ia,ic] = unique(A) 
-    % C = A(ia)
-    % A = C(ic)
+
     
     ff=1;
     
