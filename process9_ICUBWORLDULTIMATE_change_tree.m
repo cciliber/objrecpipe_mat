@@ -35,7 +35,8 @@ categN = cellfun(@(s) s{1}, categN_transf, 'UniformOutput', 0);
 transf = cellfun(@(s) s{2}, categN_transf, 'UniformOutput', 0);
 
 categ = cellfun(@(x,n) x(1:(n-1)), categN, num2cell(cellfun(@(x) x(1), regexp(categN, '\d'))), 'UniformOutput', false);
-N = cellfun(@(x,n) x(n:end), categN, num2cell(cellfun(@(x) x(1), regexp(categN, '\d'))), 'UniformOutput', false);transf = cellfun(@(s) s{2}, categN_transf, 'UniformOutput', 0);;
+N = cellfun(@(x,n) x(n:end), categN, num2cell(cellfun(@(x) x(1), regexp(categN, '\d'))), 'UniformOutput', false);
+transf = cellfun(@(s) s{2}, categN_transf, 'UniformOutput', 0);
 
 categ(strcmp(categ, 'pinza')) = repmat({'hairclip'}, sum(strcmp(categ, 'pinza')), 1);
 categ(strcmp(categ, 'binder')) = repmat({'ringbinder'}, sum(strcmp(categ, 'binder')), 1);
