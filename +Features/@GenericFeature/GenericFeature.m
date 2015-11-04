@@ -81,6 +81,10 @@ classdef GenericFeature < handle %matlab.mixin.Copyable %hgsetget
         end
         function current_level = explore_next_level_folder(obj, current_path, current_level, objects_list)
             
+            if ischar(objects_list)
+                objects_list = {objects_list};
+            end
+            
             % get the listing of files at the current level
             files = dir(fullfile(obj.RootPath, current_path));
  
@@ -174,6 +178,16 @@ classdef GenericFeature < handle %matlab.mixin.Copyable %hgsetget
             input_registry = textread(in_registry_path, '%s', 'delimiter', '\n'); 
             catch err
                 fprintf(2, 'Cannot open file: %s', in_registry_path);
+            end
+            
+            input_registry = cellfun(@strsplit, input_registry, 'UniformOutput', false);
+            
+            if length(input_registry{1})>1
+                
+                labels = cellfun(@(s) s{2}, input_registry, 'UniformOutput', false);
+                object.Y = cellfun(@(s) str2num(s), labels);
+                
+                input_registry = cellfun(@(s) s{1}, input_registry, 'UniformOutput', false);
             end
             
             % select only specified folders
