@@ -198,6 +198,30 @@ classdef GenericFeature < handle %matlab.mixin.Copyable %hgsetget
 
         end
 
+        function assign_registry_and_tree_from_cellarray(object, input_registry, objlist, out_registry_path)
+            
+            % select only specified folders
+            [object.Registry, object.Tree] = select_registry_paths(input_registry, objlist);
+            object.ExampleCount = size(object.Registry,1);
+            
+            if ~isempty(out_registry_path)
+                
+                [reg_dir, ~, ~] = fileparts(out_registry_path);
+                check_output_dir(reg_dir);
+                
+                fid = fopen(out_registry_path,'w');
+                if fid==-1
+                    fprintf(2, 'Cannot open file: %s',out_registry_path);
+                end
+                for line_idx=1:object.ExampleCount
+                    fprintf(fid, '%s\n', object.Registry{line_idx});
+                end
+                fclose(fid);
+                
+            end
+            
+        end
+        
         function extract_file(object, in_rootpath, in_registry_path, in_ext, objlist, out_registry_path, dictionary, modality_out, out_rootpath, out_ext)
                     
             check_input_dir(in_rootpath);

@@ -4,8 +4,8 @@ addpath(genpath(FEATURES_DIR));
 
 %%
 
-day = 3;
-root_path = fullfile('/media/giulia/DATA/ICUBWORLD_ULTIMATE_folderized_jpg',  ['day' num2str(day)]);
+day = 5;
+root_path = fullfile('/media/giulia/DATA/ICUBWORLD_ULTIMATE_temporary',  ['day' num2str(day)]);
 
 featL = Features.GenericFeature();
 featL.assign_registry_and_tree_from_folder(fullfile(root_path, 'left'), [], [], [], []);
@@ -52,8 +52,8 @@ if sum(strcmp(unique(fdirsL), unique(fdirsR)))==length(unique(fdirsL))
     end
     disp(num2str(length(featR.Registry)));
     
-    %rmdir(fullfile(root_path, 'left'));
-    %rmdir(fullfile(root_path, 'right'));
+    rmdir(fullfile(root_path, 'left'),'s');
+    rmdir(fullfile(root_path, 'right'), 's');
 else
     error('LEFT and RIGHT dirs do not correspond!');
     load gong.mat;

@@ -4,12 +4,12 @@ addpath(genpath(FEATURES_DIR));
 
 %%
 
-day = 3;
-camera = {'left'}; % or [] or {'left'} or {'right'}
+day = 5;
+camera = {'right'}; % or [] or {'left'} or {'right'}
 
-in_root_path = fullfile('/media/giulia/DATA/ICUBWORLD_ULTIMATE_folderized_jpg',  ['day' num2str(day)]);
+in_root_path = fullfile('/media/giulia/MyPassport/ICUBWORLD_ULTIMATE_folderized_png',  ['day' num2str(day)]);
 %out_root_path = fullfile('/media/giulia/MyPassport/ICUBWORLD_ULTIMATE_BB_disp',  ['day' num2str(day)]);
-out_root_path = fullfile('/media/giulia/MyPassport/ICUBWORLD_ULTIMATE_CTR_disp', ['day' num2str(day)]);
+out_root_path = fullfile('/media/giulia/DATA/ICUBWORLD_ULTIMATE_temporary', ['day' num2str(day)]);
 
 convert_images = 0;
 copy_registries = 1;

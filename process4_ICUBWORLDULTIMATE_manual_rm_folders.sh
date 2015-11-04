@@ -702,17 +702,13 @@ mv mug8redo2drot_2DROT_skipped mug8_2DROT
 rm -r mug9_SCALE_skipped
 rm -r mug9_2DROT_skipped
 
-rm -r mug11transparentthisisthesimulatedday5_SCALE_skipped
-rm -r mug11transparentthisisthesimulatedday5_2DROT_skipped
-rm -r mug11transparentthisisthesimulatedday5_3DROT_skipped
-rm -r mug11transparentthisisthesimulatedday5_MIX_skipped
-rm -r mug11transparentthisisthesimulatedday5_TRANSL_skipped
 mv mug11transparent_3DROT mug11_3DROT
 mv mug11transparent_2DROT mug11_2DROT
 mv mug11transparent_MIX mug11_MIX
 mv mug11transparent_TRANSL mug11_TRANSL
 mv mug11transparent_SCALE mug11_SCALE
 
+mkdir ../objects_in_piu
 mkdir ../objects_in_piu/day6
 mv mug6_SCALE ../objects_in_piu/day6
 mv mug6_2DROT ../objects_in_piu/day6
@@ -836,7 +832,7 @@ mv book10kklimt_2DROT book10_2DROT
 mv book10kklimt_3DROT book10_3DROT
 mv book10kklimt_TRANSL book10_TRANSL
 mv book10kklimt_MIX book10_MIX
-mv book10kklimtredoscale_SCALE book10_SCALE_skipped
+mv book10kklimtredoscale_SCALE_skipped book10_SCALE
 
 rm -r brush3_2DROT
 rm -r brush3_3DROT
@@ -874,13 +870,13 @@ mv brush7redotorsodritto_MIX brush7_MIX
 rm -r brush8_2DROT
 rm -r brush8_3DROT
 rm -r brush8_SCALE
-rm -r brush8_TRANSLd
+rm -r brush8_TRANSL
 rm -r brush8_MIX
-mv brush8_2DROT_redo brush8_2DROT
-mv brush8_3DROT_redo brush8_3DROT
-mv brush8_SCALE_redo brush8_SCALE
-mv brush8_TRANSL_redo brush8_TRANSL
-mv brush8_MIX_redo brush8_MIX
+mv brush8redo_2DROT brush8_2DROT
+mv brush8redo_3DROT brush8_3DROT
+mv brush8redo_SCALE brush8_SCALE
+mv brush8redo_TRANSL brush8_TRANSL
+mv brush8redo_MIX brush8_MIX
 
 rm -r case1_2DROT_skipped
 rm -r case1_3DROT_skipped
@@ -913,19 +909,14 @@ rm -r case4_SCALE_skipped
 rm -r case4_2DROT
 rm -r case4_3DROT
 rm -r case4_SCALE
-rm -r case4_TRANSL
 rm -r case4_MIX
-
-rm -r case5_SCALE_skipped
-rm -r case4_SCALE 
 mv case4_SCALE_redo case4_SCALE
-rm -r case4_2DROT 
 mv case4_2DROT_redo case4_2DROT
-rm -r case4_3DROT 
 mv case4_3DROT_redo case4_3DROT
-rm -r case4_MIX 
 mv case4_MIX_redo case4_MIX
 rm -r case4_TRANSL_redo
+
+rm -r case5_SCALE_skipped
 
 rm -r case9_2DROT_skipped
 rm -r case9_SCALE_skipped
@@ -955,12 +946,13 @@ rm -r mug8_3DROT_skipped
 rm -r mug9_SCALE_skipped
 rm -r mug9_2DROT_skipped
 
+mkdir ../objects_in_piu
 mkdir ../objects_in_piu/day5
 mv mug5_SCALE ../objects_in_piu/day5
 mv mug5_2DROT ../objects_in_piu/day5
 mv mug5_3DROT ../objects_in_piu/day5
 mv mug5_TRANSL ../objects_in_piu/day5
-mv mug5_SKIP ../objects_in_piu/day5
+mv mug5_MIX ../objects_in_piu/day5
 
 mv mug11transparentthisisthesimulatedday5_3DROT mug5_3DROT
 mv mug11transparentthisisthesimulatedday5_2DROT mug5_2DROT
@@ -968,37 +960,36 @@ mv mug11transparentthisisthesimulatedday5_MIX mug5_MIX
 mv mug11transparentthisisthesimulatedday5_TRANSL mug5_TRANSL
 mv mug11transparentthisisthesimulatedday5_SCALE mug5_SCALE
 
+rm -r perfume1_2DROT
+rm -r perfume1redomix_3DROT
+rm -r perfume1_SCALE
+rm -r perfume1_TRANSL
+rm -r perfume1_MIX
+mv perfume1redomix_2DROT perfume1_2DROT
+mv perfume1redomix_SCALE perfume1_SCALE
+mv perfume1redomix_TRANSL perfume1_TRANSL
+mv perfume1redomix_MIX perfume1_MIX
+
 rm -r perfume2_SCALE_skipped
 rm -r perfume2_2DROT_skipped
 rm -r perfume2_3DROT_skipped
 
-rm -r perfume3_2DROT_skipped
-rm -r perfume3_3DROT_skipped
-rm -r perfume3_SCALE_skipped
-rm -r perfume3_TRANSL_skipped
-rm -r perfume3_MIX_skipped
+rm -r perfume3_2DROT
+rm -r perfume3_3DROT
+rm -r perfume3_SCALE
+rm -r perfume3_TRANSL
+rm -r perfume3_MIX
 mv perfume3lighter_2DROT perfume3_2DROT
 mv perfume3lighter_3DROT perfume3_3DROT
 mv perfume3lighter_SCALE perfume3_SCALE
 mv perfume3lighter_TRANSL perfume3_TRANSL
 mv perfume3lighter_MIX perfume3_MIX
 
-rm -r perfume1_2DROT_skipped
-rm -r perfume1redomix_3DROT_skipped
-rm -r perfume1_SCALE_skipped
-rm -r perfume1_TRANSL_skipped
-rm -r perfume1_MIX_skipped
-mv perfume1redomix_2DROT perfume1_2DROT
-mv perfume1redomix_SCALE perfume1_SCALE
-mv perfume1redomix_TRANSL perfume1_TRANSL
-mv perfume1redomix_MIX perfume1_MIX
-
-rm -r perfume7_2DROT_skipped
-rm -r perfume7_3DROT_skipped
-rm -r perfume7_SCALE_skipped
-rm -r perfume7_TRANSL_skipped
-rm -r perfume7_MIX_skipped
-mv perfume7redomix_2DROT perfume7_2DROT
+rm -r perfume7redomix_2DROT
+rm -r perfume7_3DROT
+rm -r perfume7_SCALE
+rm -r perfume7_TRANSL
+rm -r perfume7_MIX
 mv perfume7redomix_3DROT perfume7_3DROT
 mv perfume7redomix_SCALE perfume7_SCALE
 mv perfume7redomix_TRANSL perfume7_TRANSL

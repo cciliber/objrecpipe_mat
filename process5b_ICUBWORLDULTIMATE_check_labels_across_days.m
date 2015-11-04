@@ -10,6 +10,7 @@ Nobj_xCat = 10;
 
 day1 = 5;
 day2 = day1+1;
+
 root_path1 = fullfile('/media/giulia/DATA/ICUBWORLD_ULTIMATE_folderized_jpg',  ['day' num2str(day1)]);
 root_path2 = fullfile('/media/giulia/DATA/ICUBWORLD_ULTIMATE_folderized_jpg',  ['day' num2str(day2)]);
 
