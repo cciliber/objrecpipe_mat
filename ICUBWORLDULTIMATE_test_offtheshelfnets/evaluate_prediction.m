@@ -293,9 +293,13 @@ for midx = 1:length(mappings)
         
     elseif midx==2
         
-        [~, tmpy] = max(reshape(scoresavg{cc}, NobjPerCat*Ntransfs*Ndays*Ncameras, 1000),[], 2);
-        tmpy = tmpy - 1;
-        predaccum{cc} = reshape(tmpy, NobjPerCat, Ntransfs, Ndays, Ncameras);
+        for cc=1:Ncat
+            if ~isempty(REG{cc})
+                [~, tmpy] = max(reshape(scoresavg{cc}, NobjPerCat*Ntransfs*Ndays*Ncameras, 1000),[], 2);
+                tmpy = tmpy - 1;
+                predaccum{cc} = reshape(tmpy, NobjPerCat, Ntransfs, Ndays, Ncameras);
+            end
+        end
         
     end
     
