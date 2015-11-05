@@ -207,16 +207,16 @@ for midx = 1:length(mappings)
     
     mapping = mappings{midx};
     
-    preadccum = cell(Ncat, 1);
+    predaccum = cell(Ncat, 1);
     for cc=1:Ncat
         if ~isempty(scoresavg{cc})
-            preadccum{cc} = zeros(NobjPerCat, Ntransfs, Ndays, Ncameras);
+            predaccum{cc} = zeros(NobjPerCat, Ntransfs, Ndays, Ncameras);
         end
     end
     
-    if strcmp(mapping((regexp(mapping, '\d')+1):end), 'NN')
+    if midx==1
         
-        k = str2double(1:mapping(regexp(mapping, '\d')));
+        k = str2double(mapping(1:regexp(mapping, '\d')));
         
         xx = cell(length(set_names), 1);
         yy = cell(length(set_names), 1);
@@ -251,7 +251,7 @@ for midx = 1:length(mappings)
                         cam = dirlist_splitted{ii,4};
                         
                         xx{sidx}{cc}(ii,:) = scoresavg{cc}(obj, opts.Transfs(transf), opts.Days(day), opts.Cameras(cam), :);
-                        yy{sidx}{cc}(ii) = trueclass{cc}(obj, opts.Transfs(transf), opts.Days(day), opts.Cameras(cam));
+                        yy{sidx}{cc}(ii) = trueclass{cc}{obj, opts.Transfs(transf), opts.Days(day), opts.Cameras(cam)}(1);
                         
                     end
                 end
@@ -276,7 +276,7 @@ for midx = 1:length(mappings)
                     dirlist_splitted = regexp(dirlist, '/', 'split');
                     dirlist_splitted = vertcat(dirlist_splitted{:});
 
-                    tmpy = kNNClassify_multiclass(cell2mat(xx{other_sidx}), cell2mat(yy{other_sidx}), k, cell2mat(xx{sidx}{cc}));
+                    tmpy = kNNClassify_multiclass(cell2mat(xx{other_sidx}), cell2mat(yy{other_sidx}), k, xx{sidx}{cc});
                     
                     for ii=1:length(dirlist)
                         
@@ -285,21 +285,21 @@ for midx = 1:length(mappings)
                         day = dirlist_splitted{ii,3};
                         cam = dirlist_splitted{ii,4};
 
-                        preadccum{cc}(obj, opts.Transfs(transf), opts.Days(day), opts.Cameras(cam)) = tmpy(ii);
+                        predaccum{cc}(obj, opts.Transfs(transf), opts.Days(day), opts.Cameras(cam)) = tmpy(ii);
                     end
                 end
             end
         end
         
-    elseif  strcmp(mapping, 'none')
+    elseif midx==2
         
         [~, tmpy] = max(reshape(scoresavg{cc}, NobjPerCat*Ntransfs*Ndays*Ncameras, 1000),[], 2);
         tmpy = tmpy - 1;
-        preadccum{cc} = reshape(tmpy, NobjPerCat, Ntransfs, Ndays, Ncameras);
+        predaccum{cc} = reshape(tmpy, NobjPerCat, Ntransfs, Ndays, Ncameras);
         
     end
     
-    save(fullfile(output_dir, [accum_method{2} '_' mapping '.mat']), 'predaccum', '-v7.3');
+    save(fullfile(output_dir, [accum_methods{2} '_' mapping '.mat']), 'predaccum', '-v7.3');
     
 end
 
