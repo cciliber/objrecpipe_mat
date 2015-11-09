@@ -31,12 +31,12 @@ model = 'googlenet';
 %model = 'bvlc_reference_caffenet';
 %model = 'vgg';
 
-%dset_dir = '/Volumes/MyPassport/iCubWorldUltimate_centroid384_disp_finaltree';
+dset_dir = '/media/giulia/Elements/ICUBWORLD_UTLTIMATE/iCubWorldUltimate_centroid384_disp_finaltree';
 %dset_dir = '/Volumes/MyPassport/iCubWorldUltimate_bb60_disp_finaltree';
-dset_dir = '/Volumes/MyPassport/iCubWorldUltimate_centroid256_disp_finaltree';
+%dset_dir = '/Volumes/MyPassport/iCubWorldUltimate_centroid256_disp_finaltree';
 %dset_dir = '/Volumes/MyPassport/iCubWorldUltimate_bb30_disp_finaltree';
 
-reg_dir = '/Volumes/MyPassport/iCubWorldUltimate_digit_registries/test_offtheshelfnets';
+reg_dir = '/media/giulia/Elements/ICUBWORLD_ULTIMATE/iCubWorldUltimate_digit_registries/test_offtheshelfnets';
 check_input_dir(reg_dir);
 
 input_dir = fullfile([dset_dir '_experiments'], 'test_offtheshelfnets', 'scores', model);
@@ -49,8 +49,10 @@ check_output_dir(output_dir);
 
 set_names = {'even', 'odd'};
 day_lists = {4:2:Ndays, 3:2:Ndays};
+
 obj_lists = {1:NobjPerCat, 1:NobjPerCat};
 transf_lists = {1:Ntransfs, 1:Ntransfs};
+
 camera_lists = {[1 2], [1 2]};
 
 for sidx=1:length(set_names)
@@ -117,8 +119,8 @@ for sidx=1:length(set_names)
         
     end
     
-    save(fullfile(output_dir, ['REG_' set_name '.mat']), 'REG', '-v7.3');
     save(fullfile(output_dir, ['X_' set_name '.mat']), 'X', '-v7.3');
+    save(fullfile(output_dir, ['REG_' set_name '.mat']), 'REG', '-v7.3');
     save(fullfile(output_dir, ['Y_' set_name '.mat']), 'Y', '-v7.3');
     
     %% Compute native predictions
@@ -138,110 +140,8 @@ for sidx=1:length(set_names)
         end
     end
     
-    save(fullfile(output_dir, ['Y_none_' set_name '.mat']), 'Ypred', '-v7.3');
+    save(fullfile(output_dir, ['Y_none_' set_name '.mat'] ), 'Ypred', '-v7.3');
     
 end
 
 clear tobeloaded oo_tobeloaded tt_tobeloaded dd_tobeloaded ee_tobeloaded
-
-%% Compute & save D matrix
-
-XX = cell(length(set_names), 1);
-XX2 = cell(length(set_names), 1);
-YY = cell(length(set_names), 1);
-
-N = zeros(length(set_names), 1);
-NframesPerCat = cell(length(set_names), 1);
-
-for sidx=1:length(set_names)
-    
-    set_name = set_names{sidx};
-    
-    m = matfile(fullfile(output_dir, ['X_' set_name(sidx) '.mat']));
-    NframesPerCat{sidx} = cellfun(m.X, @length);
-    XX{sidx} = cell2mat(m.X);
-    
-    m = matfile(fullfile(output_dir, ['Y_' set_name(sidx) '.mat']));
-    YY{sidx} = cell2mat(m.Y);
-    
-    XX2{sidx} = sum(XX{sidx}.*XX{sidx},2);
-    
-    N(sidx) = size(XX{sidx},1);
-        
-end
-
-batch_size = 10000;
-m = matfile(fullfile(output_dir, 'D.mat'), 'Writable', true);
-
-Nbatches = ceil(N(2)/batch_size);
-
-for bidx=1:Nbatches
-    
-    start_idx = (bidx-1)*batch_size+1;
-    end_idx = min(bidx*batch_size, N(2));
-    n = end_idx-start_idx+1;
-    
-    m.D(:, start_idx:end_idx) = XX2{1}*ones(1,n) - 2 * XX{1} * XX{2}(start_idx:end_idx, :)' + ones(N(1),1)*(XX2{2}(start_idx:end_idx))';
-            
-end
-
-%% Compute kNN predictions
-
-K = 1;
-
-m = matfile(fullfile(output_dir, 'D.mat'));
-
-% On set 2
-
-Nbatches = ceil(N(2)/batch_size);
-
-Ypred = zeros(N(2), 1);
-k = min(K, N(1));
-
-for bidx=1:Nbatches
-    
-    start_idx = (bidx-1)*batch_size+1;
-    end_idx = min(bidx*batch_size, N(2));
-    
-    [~, I] = sort(m.D(:, start_idx:end_idx), 1);
-    idx = I(1:k, :);
-    
-    if k==1
-        Ypred(start_idx:end_idx) = mode(YY{1}(idx)',1)';
-    else
-        Ypred(start_idx:end_idx) = mode(YY{1}(idx),1)';
-    end
-           
-end
-
-Ypred = mat2cell(Ypred, NframesPerCat{2});
-set_name = set_names{2};
-save(fullfile(output_dir, ['Y_' num2str(k) 'NN_' set_name '.mat']), 'Ypred', '-v7.3');
-
-% On set 1
-
-Nbatches = ceil(N(1)/batch_size);
-
-Ypred = zeros(N(1), 1);
-k = min(K, N(2));
-
-for bidx=1:Nbatches
-    
-    start_idx = (bidx-1)*batch_size+1;
-    end_idx = min(bidx*batch_size, N(1));
-      
-    [~, I] = sort(m.D(start_idx:end_idx,:),2);
-    idx = I(:, 1:k)';
-    
-    if k==1
-        Ypred(start_idx:end_idx) = mode(YY{2}(idx)',1)';
-    else
-        Ypred(start_idx:end_idx) = mode(YY{2}(idx),1)';
-    end
-    
-end
-
-Ypred = mat2cell(Ypred, NframesPerCat{1});
-set_name = set_names{2};
-save(fullfile(output_dir, ['Y_kNN_' set_name '.mat']), 'Ypred', '-v7.3');
-    

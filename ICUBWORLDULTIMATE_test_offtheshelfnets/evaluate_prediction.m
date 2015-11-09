@@ -35,8 +35,8 @@ model = 'googlenet';
 %model = 'bvlc_reference_caffenet';
 %model = 'vgg';
 
-dset_dir = '/data/giulia/DATASETS/iCubWorldUltimate_centroid384_disp_finaltree';
-%dset_dir = '/data/giulia/DATASETS/iCubWorldUltimate_bb60_disp_finaltree';
+%dset_dir = '/media/giulia/Elements/ICUBWORLD_ULTIMATE/iCubWorldUltimate_centroid384_disp_finaltree';
+dset_dir = '/data/giulia/DATASETS/iCubWorldUltimate_bb60_disp_finaltree';
 %dset_dir = '/data/giulia/DATASETS/iCubWorldUltimate_centroid256_disp_finaltree';
 %dset_dir = '/data/giulia/DATASETS/iCubWorldUltimate_bb30_disp_finaltree';
 
