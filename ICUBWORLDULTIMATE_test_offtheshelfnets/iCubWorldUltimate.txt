@@ -1,13 +1,13 @@
 mug coffe-mug "mug" coffee-mug n03063599 504
-glass glass "glass, drinking glass"
+glass glass "glass, drinking glass" drinking-glass n03438257 1001
 soda-bottle soda-bottle "pop bottle, soda bottle" soda-bottle n03983396 737
-oven-glove glove "glove"
-squeezer squeezer "squeezer"
+oven-glove glove "glove" glove n03441112 1002
+squeezer squeezer "squeezer" squeezer n04293119 1003
 soapdispenser soap-dispenser "soap dispenser" soap-dispenser n04254120 804
-sprayer sprayer "atomizer, atomiser, spray, sprayer, nebulizer, nebuliser"
+sprayer sprayer "atomizer, atomiser, spray, sprayer, nebulizer, nebuliser" sprayer n02754103 1004
 body-lotion lotion "lotion" lotion n03690938 631
 perfume perfume-essence "perfume, essence" perfume-essence n03916031 711
-hairbrush hair-brush "hairbrush"
+hairbrush hair-brush "hairbrush" hairbrush n03475581 1005
 mouse mouse "mouse, computer mouse" mouse n03793489 673
 ringbinder ring-binder "binder, ring-binder" ring-binder n02840245 446
 pencilcase pencil-case "pencil box, pencil case" pencil-case n03908618 709
