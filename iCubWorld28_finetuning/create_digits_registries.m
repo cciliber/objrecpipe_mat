@@ -1,18 +1,9 @@
-%% setup 
+%% Setup 
 
 FEATURES_DIR = '/data/giulia/REPOS/objrecpipe_mat';
-
-run('/data/REPOS/GURLS/gurls/utils/gurls_install.m');
-
-curr_dir = pwd;
-cd('/data/REPOS/vlfeat-0.9.20/toolbox');
-vl_setup;
-cd(curr_dir);
-clear curr_dir;
-
 addpath(genpath(FEATURES_DIR));
 
-%% dataset
+%% Dataset
 
 dset_path = '/data/giulia/DATASETS/iCubWorld28_jpg';
 
