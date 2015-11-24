@@ -1,15 +1,6 @@
 %% Setup 
 
 FEATURES_DIR = '/data/giulia/REPOS/objrecpipe_mat';
-
-run('/data/REPOS/GURLS/gurls/utils/gurls_install.m');
-
-curr_dir = pwd;
-cd('/data/REPOS/vlfeat-0.9.20/toolbox');
-vl_setup;
-cd(curr_dir);
-clear curr_dir;
-
 addpath(genpath(FEATURES_DIR));
 
 %% ImageNet synsets
@@ -38,7 +29,7 @@ NobjPerCat = ICUBWORLDopts.ObjPerCat;
 
 %% Output
 
-out_dir = fullfile('/data/giulia/DATASETS/iCubWorldUltimate_digit_registries/test_offtheshelfnets');
+out_dir = fullfile('/data/giulia/DATASETS/iCubWorldUltimate_registries');
 
 out_ext = '.jpg';
 
