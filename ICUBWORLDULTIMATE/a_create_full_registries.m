@@ -13,8 +13,8 @@ fclose(fid);
 
 %% Dataset
 
-dset_path = '/data/giulia/DATASETS/iCubWorldUltimate_bb_disp_finaltree';
-dset_info = '/data/giulia/DATASETS/iCubWorldUltimate.txt';
+dset_path = '/data/giulia/ICUBWORLD_ULTIMATE/iCubWorldUltimate_bb30_disp_finaltree';
+dset_info = '/data/giulia/ICUBWORLD_ULTIMATE/iCubWorldUltimate_registries/info/iCubWorldUltimate.txt';
 dset_name = 'iCubWorldUltimate';
 
 ICUBWORLDopts = ICUBWORLDinit(dset_info);
@@ -29,7 +29,7 @@ NobjPerCat = ICUBWORLDopts.ObjPerCat;
 
 %% Output
 
-out_dir = fullfile('/data/giulia/DATASETS/iCubWorldUltimate_registries');
+out_dir = fullfile('/data/giulia/ICUBWORLD_ULTIMATE/iCubWorldUltimate_registries/full_registries');
 
 out_ext = '.jpg';
 
