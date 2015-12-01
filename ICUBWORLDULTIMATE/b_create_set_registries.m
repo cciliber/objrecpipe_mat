@@ -49,20 +49,11 @@ check_input_dir(reg_dir);
 %experiment = 'categorization';
 experiment = 'identification';
 
-if strcmp(experiment, 'identification')
-    % validation percentage
-    validation_perc = 0.5;
-    validation_step = 1/validation_perc;
-else
-    validation_perc = [];
-    validation_step = [];
-end
-
 %% Output root dir for registries of the subsets
 
 output_dir_regtxt = fullfile('/data/giulia/ICUBWORLD_ULTIMATE/iCubWorldUltimate_registries', experiment);
 
-%% Default sets
+%% Default sets that are created
 
 set_names = {'train_', 'val_', 'test_'};
 Nsets = length(set_names);
@@ -121,6 +112,15 @@ fclose(fid_labels);
 
 %% Choose transformation, day, camera (for each set)
 
+% you can set it to true in the identification experiment 
+% e.g. if the train and val sets are coincident (same transformation+day)
+% the camera is not to be considered in this division...
+if strcmp(experiment, 'identification') 
+    divide_trainval_perc = false;
+else
+    divide_trainval_perc = [];
+end
+
 %transf_lists = {1:Ntransfs, 1:Ntransfs, 1:Ntransfs};
 transf_lists = {2, 1, 3};
 %transf_lists = {[2 3], [2 3], [2 3]};
@@ -138,6 +138,20 @@ end
 
 %camera_lists = {[1 2], [1 2], [1 2]};
 camera_lists = {1, 1, 1};
+
+%% Specifiy validation percentage
+
+% In the identification experiment, it is possible to divide 
+% train and val also in this way, e.g. if the sets are coincident
+
+if strcmp(experiment, 'identification') && divide_trainval_perc==true
+    % validation percentage
+    validation_perc = 0.5;
+    validation_step = 1/validation_perc;
+else
+    validation_perc = [];
+    validation_step = [];
+end
 
 %% Create set names
 
@@ -215,7 +229,7 @@ for sidx=1:length(set_names)
         
         flist_splitted = flist_splitted(tobeloaded==1, :);
         
-        if strcmp(experiment, 'identification')
+        if strcmp(experiment, 'identification') && divide_trainval_perc==true
            if strncmp(set_name, 'tra', 3)
                flist_splitted(1:validation_step:end,:) = [];
            elseif strncmp(set_name, 'val', 3)
