@@ -3,14 +3,16 @@
 FEATURES_DIR = '/data/giulia/REPOS/objrecpipe_mat';
 addpath(genpath(FEATURES_DIR));
 
+DATA_DIR = '/Volumes/MyPassport';
+
 %% Dataset info
 
-dset_info = fullfile(FEATURES_DIR, 'ICUBWORLDULTIMATE_test_offtheshelfnets', 'iCubWorldUltimate.txt');
+dset_info = fullfile(DATA_DIR, 'iCubWorldUltimate_registries/info/iCubWorldUltimate.txt');
 dset_name = 'iCubWorldUltimate';
 
 opts = ICUBWORLDinit(dset_info);
 
-cat_names = keys(opts.Cat)';
+cat_names = keys(opts.Cat);
 %obj_names = keys(opts.Obj)';
 transf_names = keys(opts.Transfs)';
 day_names = keys(opts.Days)';
@@ -23,23 +25,31 @@ Ntransfs = opts.Transfs.Count;
 Ndays = opts.Days.Count;
 Ncameras = opts.Cameras.Count;
 
-%% Location of the scores
-
-dset_dir = '/data/giulia/ICUBWORLD_ULTIMATE/iCubWorldUltimate_centroid384_disp_finaltree';
-%dset_dir = '/data/giulia/ICUBWORLD_ULTIMATE/iCubWorldUltimate_bb60_disp_finaltree';
-%dset_dir = '/data/giulia/ICUBWORLD_ULTIMATE/iCubWorldUltimate_centroid256_disp_finaltree';
-%dset_dir = '/data/giulia/ICUBWORLD_ULTIMATE/iCubWorldUltimate_bb30_disp_finaltree';
-
-exp_dir = fullfile([dset_dir '_experiments'], 'test_offtheshelfnets');
-
-model = 'googlenet';
-%model = 'caffenet';
-%model = 'vgg';
-
 %% Experiment kind
 
 experiment = 'categorization';
 %experiment = 'identification';
+
+%% Whether to use the ImageNet labels
+
+if strcmp(experiment, 'categorization') 
+    use_imnetlabels = true;
+else
+    use_imnetlabels = [];
+end
+
+%% Location of the scores
+
+%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid384_disp_finaltree');
+%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb60_disp_finaltree');
+dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid256_disp_finaltree');
+%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb30_disp_finaltree');
+
+exp_dir = fullfile([dset_dir '_experiments'], 'test_offtheshelfnets');
+
+%model = 'googlenet';
+model = 'bvlc_reference_caffenet';
+%model = 'vgg';
 
 %% Set the IO
 
@@ -51,9 +61,7 @@ save_I = true;
 output_dir = fullfile(exp_dir, 'predictions', model, experiment);
 check_output_dir(output_dir);
 
-%% Input root dir for registries of the subsets
-
-input_dir_regtxt = fullfile('/data/giulia/ICUBWORLD_ULTIMATE/iCubWorldUltimate_registries', experiment);
+input_dir_regtxt = fullfile(DATA_DIR, 'iCubWorldUltimate_registries', experiment);
 check_input_dir(input_dir_regtxt);
 
 %% Default sets that are searched
@@ -74,6 +82,9 @@ check_input_dir(input_dir_regtxt);
 input_dir_regtxt = fullfile(input_dir_regtxt, strrep(strrep(num2str(cat_idx), '   ', '-'), '  ', '-'));
 check_input_dir(input_dir_regtxt);
 
+output_dir_regtxt = fullfile(output_dir, ['Ncat_' num2str(length(cat_idx))], strrep(strrep(num2str(cat_idx), '   ', '-'), '  ', '-'));
+check_output_dir(output_dir_regtxt);
+
 %% Choose objects per category (for each set)
 
 if strcmp(experiment, 'categorization')
@@ -81,6 +92,13 @@ if strcmp(experiment, 'categorization')
 elseif strcmp(experiment, 'identification')
     obj_list = 4:6;
     obj_lists = {obj_list, obj_list, obj_list};
+end
+
+if strcmp(experiment, 'identification')
+    input_dir_regtxt = fullfile(input_dir_regtxt, strrep(strrep(num2str(obj_list), '   ', '-'), '  ', '-'));
+    check_input_dir(input_dir_regtxt);
+    output_dir_regtxt = fullfile(output_dir_regtxt, strrep(strrep(num2str(obj_list), '   ', '-'), '  ', '-'));
+    check_output_dir(output_dir_regtxt);
 end
 
 %% Choose transformation, day, camera (for each set)
@@ -137,7 +155,11 @@ for sidx=1:2
     set_name = set_names{sidx};
     
     % load Y
-    load(fullfile(input_dir_regtxt, ['Y_' set_name '.mat']));
+    if use_imnetlabels
+        load(fullfile(input_dir_regtxt, ['Yimnet_' set_name '.mat']));
+    else
+        load(fullfile(input_dir_regtxt, ['Y_' set_name '.mat']));
+    end
     YY{sidx} = cell2mat(Y);
     clear Y
         
@@ -145,12 +167,12 @@ for sidx=1:2
     load(fullfile(input_dir_regtxt, ['REG_' set_name '.mat']));
     X = cell(Ncat, 1);
     NframesPerCat{sidx} = cell(Ncat, 1);
-    for cc=values(opts.Cat, cat_names(cat_idx))
-        NframesPerCat{sidx}{cc} = length(REG{cc});
-        X{cc} = zeros(NframesPerCat{sidx}{cc}, 1000);
-        for ff=1:NframesPerCat{sidx}{cc}
-            fid = fopen(fullfile(input_dir, cat_names{cc}, [REG{cc}{ff}(1:(end-4)) '.txt']));
-            X{cc}(ff,:) = cell2mat(textscan(fid, '%f'))';
+    for cc=cat_idx
+        NframesPerCat{sidx}{opts.Cat(cat_names{cc})} = length(REG{opts.Cat(cat_names{cc})});
+        X{opts.Cat(cat_names{cc})} = zeros(NframesPerCat{sidx}{opts.Cat(cat_names{cc})}, 1000);
+        for ff=1:NframesPerCat{sidx}{opts.Cat(cat_names{cc})}
+            fid = fopen(fullfile(input_dir, cat_names{cc}, [REG{opts.Cat(cat_names{cc})}{ff}(1:(end-4)) '.txt']));
+            X{opts.Cat(cat_names{cc})}(ff,:) = cell2mat(textscan(fid, '%f'))';
             fclose(fid);
         end
     end
@@ -168,7 +190,7 @@ end
 
 max_batch_size = 5000;
 
-max_Icols = 50000;
+max_Irows = 50000;
 
 max_k = 5000;
 num_k = 10;
@@ -176,7 +198,8 @@ num_k = 10;
 %% Train and cross-validate 
 
 Kvalues = round(linspace(1, min(max_k, N(1)), num_k));
-acc_crossval = zeros(3, length(Kvalues));
+Irows = min(max_Irows, N(1));
+acc_crossval = -ones(3, length(Kvalues));
 
 % Prepare scores and compute I for set 1-2 (val),
 % then predict on set 2 (train) for different Ks
@@ -204,8 +227,8 @@ clear XX XX2;
 
 disp('Computing I for sets 1-2 (validation)...');
 
-m = matfile(fullfile(output_dir, ['I_' set_name{1} '_' set_name{2} '.mat']), 'Writable', true);
-m.I = zeros(min(max_Icols, N(2)), 1);
+m = matfile(fullfile(output_dir_regtxt, ['I_' set_names{1} '_' set_names{2} '.mat']), 'Writable', true);
+m.I = zeros(Irows, 1);
 
 for bidx=1:Nbatches
     
@@ -215,7 +238,7 @@ for bidx=1:Nbatches
     
     [~, I] = sort(Dbatch, 1);
     
-    m.I(:, start_idx:end_idx) = I(1:max_k, :);
+    m.I(:, start_idx:end_idx) = I(1:Irows, :);
     
     disp(num2str(bidx));
     
@@ -245,14 +268,14 @@ for k=1:length(Kvalues)
     end
     
     % store the accuracy for current K 
-    acc_crossval(1, k) = compute_accuracy(Ypred, YY{2}, 'gurls');
+    acc_crossval(2, k) = compute_accuracy(Ypred, YY{2}, 'gurls');
     
 end
 
 % Remove intermediate I matrices if requested
 
 if save_I==false
-    rmfile(fullfile(output_dir, ['I_' set_name{1} '_' set_name{1s} '.mat']));
+    rmfile(fullfile(output_dir_regtxt, ['I_' set_names{1} '_' set_names{2} '.mat']));
 end
 
 % Prepare scores and compute I for sets 1-1 (train),
@@ -276,8 +299,8 @@ end
 
 disp('Compute I for sets 1-1 (train)...');
 
-m = matfile(fullfile(output_dir, ['I_' set_name{1} '_' set_name{1} '.mat']), 'Writable', true);
-m.I = zeros(min(max_Icols, N(1)), 1);
+m = matfile(fullfile(output_dir_regtxt, ['I_' set_names{1} '_' set_names{1} '.mat']), 'Writable', true);
+m.I = zeros(Irows, 1);
 
 for bidx=1:Nbatches
     
@@ -287,7 +310,7 @@ for bidx=1:Nbatches
     
     [~, I] = sort(Dbatch, 1);
     
-    m.I(:, start_idx:end_idx) = I(1:max_k, :);
+    m.I(:, start_idx:end_idx) = I(1:Irows, :);
     
     disp(num2str(bidx));
     
@@ -317,14 +340,14 @@ for k=1:length(Kvalues)
     end
     
     % store the accuracy for current K 
-    acc_crossval(2, k) = compute_accuracy(Ypred, YY{1}, 'gurls');
+    acc_crossval(1, k) = compute_accuracy(Ypred, YY{1}, 'gurls');
     
 end
 
 % Remove intermediate I matrices if requested
 
 if save_I==false
-    rmfile(fullfile(output_dir, ['I_' set_name{1} '_' set_name{2} '.mat']));
+    rmfile(fullfile(output_dir_regtxt, ['I_' set_names{1} '_' set_names{1} '.mat']));
 end
 
 %% Test
@@ -336,26 +359,30 @@ sidx=3;
 set_name = set_names{sidx};
     
 % load Y
-load(fullfile(input_dir_regtxt, ['Y_' set_name '.mat']));
+if use_imnetlabels
+    load(fullfile(input_dir_regtxt, ['Yimnet_' set_name '.mat']));
+else
+    load(fullfile(input_dir_regtxt, ['Y_' set_name '.mat']));
+end
 YY{3} = cell2mat(Y);
 clear Y
 
 % load scores and create X
 load(fullfile(input_dir_regtxt, ['REG_' set_name '.mat']));
 X = cell(Ncat, 1);
-NframesPerCat{sidx} = cell(Ncat, 1);
-for cc=values(opts.Cat, cat_names(cat_idx))
-    NframesPerCat{sidx}{cc} = length(REG{cc});
-    X{cc} = zeros(NframesPerCat{sidx}{cc}, 1000);
-    for ff=1:NframesPerCat{sidx}{cc}
-        fid = fopen(fullfile(input_dir, cat_names{cc}, [REG{cc}{ff}(1:(end-4)) '.txt']));
-        X{cc}(ff,:) = cell2mat(textscan(fid, '%f'))';
+NframesPerCat = cell(Ncat, 1);
+for cc=cat_idx
+    NframesPerCat{opts.Cat(cat_names{cc})} = length(REG{opts.Cat(cat_names{cc})});
+    X{opts.Cat(cat_names{cc})} = zeros(NframesPerCat{opts.Cat(cat_names{cc})}, 1000);
+    for ff=1:NframesPerCat{opts.Cat(cat_names{cc})}
+        fid = fopen(fullfile(input_dir, cat_names{cc}, [REG{opts.Cat(cat_names{cc})}{ff}(1:(end-4)) '.txt']));
+        X{opts.Cat(cat_names{cc})}(ff,:) = cell2mat(textscan(fid, '%f'))';
         fclose(fid);
     end
 end
 
 XX = cell2mat(X);
-XX2 = sum(XX{sidx}.*XX{sidx},2);
+XX2 = sum(XX.*XX,2);
 
 N(sidx) = size(XX,1);
 
@@ -374,7 +401,7 @@ xx3 = cell(Nbatches, 1);
 for bidx=1:Nbatches
     
     start_idx = (bidx-1)*batch_size+1;
-    end_idx = min(bidx*batch_size, N(2));
+    end_idx = min(bidx*batch_size, N(3));
     
     x3{bidx} = XX(start_idx:end_idx, :)';
     xx3{bidx} = XX2(start_idx:end_idx)';
@@ -384,18 +411,18 @@ clear XX XX2;
 
 disp('Computing I for sets 1-3 (test)...');
 
-m = matfile(fullfile(output_dir, ['I_' set_name{1} '_' set_name{3} '.mat']), 'Writable', true);
-m.I = zeros(min(max_Icols, N(3)), 1);
+m = matfile(fullfile(output_dir_regtxt, ['I_' set_names{1} '_' set_names{3} '.mat']), 'Writable', true);
+m.I = zeros(Irows, 1);
 
 for bidx=1:Nbatches
     
     start_idx = (bidx-1)*batch_size+1;
-    end_idx = min(bidx*batch_size, N(2));
+    end_idx = min(bidx*batch_size, N(3));
     Dbatch = bsxfun( @plus, xx1, xx3{bidx} ) - 2*x1*x3{bidx};
     
     [~, I] = sort(Dbatch, 1);
     
-    m.I(:, start_idx:end_idx) = I(1:max_k, :);
+    m.I(:, start_idx:end_idx) = I(1:Irows, :);
     
     disp(num2str(bidx));
     
@@ -407,7 +434,7 @@ disp('Predict on set 3 (test) for the best K...');
 
 % Choose best K on validation
 
-[v, best_k_idx] = min(acc_crossval(2,:));
+[v, best_k_idx] = max(acc_crossval(2,:));
 best_k = Kvalues(best_k_idx);
 
 %for k=1:length(Kvalues)
@@ -431,15 +458,21 @@ for k=best_k_idx
     end
     
     % store the accuracy for current K 
-    acc_crossval(3, k) = compute_accuracy(Ypred, YY{3}, 'gurls');
-    
-    Ypred = mat2cell(Ypred, cell2mat(NframesPerCat{3}));
-    save(fullfile(output_dir, ['Y_' num2str(Kcurrent) 'NN_' set_name{3} '.mat']), 'Ypred', '-v7.3'); 
+    acc_crossval(3, k) = compute_accuracy(Ypred, YY{3}, 'gurls')
 
 end
 
 % Remove intermediate I matrix if requested
 
 if save_I==false
-    rmfile(fullfile(output_dir, ['I_' set_name{1} '_' set_name{3} '.mat']));
+    rmfile(fullfile(output_dir_regtxt, ['I_' set_names{1} '_' set_names{3} '.mat']));
+end
+
+%% Store results
+
+Ypred = mat2cell(Ypred, cell2mat(NframesPerCat));
+if use_imnetlabels
+    save(fullfile(output_dir_regtxt, ['Yimnet_' num2str(Kcurrent) 'NN_' set_names{3} '.mat']), 'Ypred', 'Kvalues', 'acc_crossval', '-v7.3');
+else
+    save(fullfile(output_dir_regtxt, ['Y_' num2str(Kcurrent) 'NN_' set_names{3} '.mat']), 'Ypred', 'Kvalues', 'acc_crossval', '-v7.3');
 end
