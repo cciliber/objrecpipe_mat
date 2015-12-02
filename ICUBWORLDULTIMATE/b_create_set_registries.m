@@ -28,15 +28,10 @@ Ncameras = opts.Cameras.Count;
 create_fullpath = false;
 
 if create_fullpath
-    dset_dirs = {'/data/giulia/ICUBWORLD_ULTIMATE/iCubWorldUltimate_centroid384_disp_finaltree', ...
-    '/data/giulia/ICUBWORLD_ULTIMATE/iCubWorldUltimate_bb60_disp_finaltree', ...
-    '/data/giulia/ICUBWORLD_ULTIMATE/iCubWorldUltimate_centroid256_disp_finaltree', ...
-    '/data/giulia/ICUBWORLD_ULTIMATE/iCubWorldUltimate_bb30_disp_finaltree'};
-
-    choose_dset = 1;
-else
-    dset_dirs = [];
-    choose_dset = [];
+    dset_dir = '/data/giulia/ICUBWORLD_ULTIMATE/iCubWorldUltimate_centroid384_disp_finaltree';
+    %dset_dir = '/data/giulia/ICUBWORLD_ULTIMATE/iCubWorldUltimate_bb60_disp_finaltree';
+    %dset_dir = '/data/giulia/ICUBWORLD_ULTIMATE/iCubWorldUltimate_centroid256_disp_finaltree';
+    %dset_dir = '/data/giulia/ICUBWORLD_ULTIMATE/iCubWorldUltimate_bb30_disp_finaltree';
 end
 
 %% Input registries from which to select the subsets
@@ -162,7 +157,7 @@ for ii=1:Nsets
     set_names{ii} = [set_names{ii} '_day_' strrep(strrep(num2str(day_mappings{ii}), '   ', '-'), '  ', '-')];
 end
 
-%% Create the registries REG and the true labels Y (ImageNet labels), Ynew
+%% Create the registries REG and the labels Y (ImageNet labels), Ynew
 
 for sidx=1:length(set_names)
     
@@ -253,9 +248,9 @@ for sidx=1:length(set_names)
                 fprintf(fid_Y, '%s/%s %d\n', cat_names{cc}, REG{opts.Cat(cat_names{cc})}{line}, Y{opts.Cat(cat_names{cc})}(line));
             end
             if create_fullpath
-                fprintf(fid_Ynew_fullpath, '%s/%s/%s %d\n', dset_dirs{choose_dset}, cat_names{cc}, REG{opts.Cat(cat_names{cc})}{line}, Ynew{opts.Cat(cat_names{cc})}(line));
+                fprintf(fid_Ynew_fullpath, '%s/%s/%s %d\n', dset_dir, cat_names{cc}, REG{opts.Cat(cat_names{cc})}{line}, Ynew{opts.Cat(cat_names{cc})}(line));
                 if strcmp(experiment, 'categorization')
-                    fprintf(fid_Y_fullpath, '%s/%s/%s %d\n', dset_dirs{choose_dset}, cat_names{cc}, REG{opts.Cat(cat_names{cc})}{line}, Y{opts.Cat(cat_names{cc})}(line));
+                    fprintf(fid_Y_fullpath, '%s/%s/%s %d\n', dset_dir, cat_names{cc}, REG{opts.Cat(cat_names{cc})}{line}, Y{opts.Cat(cat_names{cc})}(line));
                 end
             end
         end

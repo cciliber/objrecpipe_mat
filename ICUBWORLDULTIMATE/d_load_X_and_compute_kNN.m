@@ -1,4 +1,4 @@
-%% Setup 
+%% Setup
 
 FEATURES_DIR = '/data/giulia/REPOS/objrecpipe_mat';
 addpath(genpath(FEATURES_DIR));
@@ -61,203 +61,196 @@ Kvalues = [1 100 200 500 1000 5000];
 
 %% Go!
 
-for dset_idx=1:length(dset_dirs)
-     
-    dset_dir = dset_dirs{dset_idx};
-    disp(dset_dir);
-    
-    io_dir = fullfile([dset_dir '_experiments'], 'test_offtheshelfnets', 'predictions', model, experiment);
-    check_input_dir(io_dir);
+io_dir = fullfile([dset_dir '_experiments'], 'test_offtheshelfnets', 'predictions', model, experiment);
+check_input_dir(io_dir);
 
-    % load scores
-    disp('Loading X and Y...');
-    
-    XX = cell(length(set_names), 1);
-    XX2 = cell(length(set_names), 1);
-    YY = cell(length(set_names), 1);
+% load scores
+disp('Loading X and Y...');
 
-    N = zeros(length(set_names), 1);
-    NframesPerCat = cell(length(set_names), 1);
+XX = cell(length(set_names), 1);
+XX2 = cell(length(set_names), 1);
+YY = cell(length(set_names), 1);
 
-    for sidx=1:2
+N = zeros(length(set_names), 1);
+NframesPerCat = cell(length(set_names), 1);
+
+for sidx=1:2
     
-        set_name = set_names{sidx};
+    set_name = set_names{sidx};
     
-        load(fullfile(io_dir, ['X_' set_name '.mat']));
-        
-        load(fullfile(input_dir_regtxt, ['REG_' set_name '.mat']));
-        load(fullfile(input_dir_regtxt, ['Y_' set_name '.mat']));
+    load(fullfile(io_dir, ['X_' set_name '.mat']));
     
-        NframesPerCat{sidx} = cell(Ncat, 1);
-        
-        for cc=1:Ncat
-            if ~isempty(REG{cc})
+    load(fullfile(input_dir_regtxt, ['REG_' set_name '.mat']));
+    load(fullfile(input_dir_regtxt, ['Y_' set_name '.mat']));
+    
+    NframesPerCat{sidx} = cell(Ncat, 1);
+    
+    for cc=1:Ncat
+        if ~isempty(REG{cc})
             
-                flist = cellfun(@fileparts, REG{cc}, 'UniformOutput', false);
+            flist = cellfun(@fileparts, REG{cc}, 'UniformOutput', false);
             
-                flist_splitted = regexp(flist, '/', 'split');
-                flist_splitted = vertcat(flist_splitted{:});
+            flist_splitted = regexp(flist, '/', 'split');
+            flist_splitted = vertcat(flist_splitted{:});
             
-                % remove the other camera
-                X{cc}(~strcmp(flist_splitted(:,end), camera), :) = [];
-                Y{cc}(~strcmp(flist_splitted(:,end), camera)) = [];
+            % remove the other camera
+            X{cc}(~strcmp(flist_splitted(:,end), camera), :) = [];
+            Y{cc}(~strcmp(flist_splitted(:,end), camera)) = [];
             
-                NframesPerCat{sidx}{cc} = length(X{cc});
+            NframesPerCat{sidx}{cc} = length(X{cc});
             
-            end
         end
-    
-        XX{sidx} = cell2mat(X);
-        YY{sidx} = cell2mat(Y);
-    
-        XX2{sidx} = sum(XX{sidx}.*XX{sidx},2);
-    
-        N(sidx) = size(XX{sidx},1);
-        
     end
-
-    clear X Y REG
-
-    % prepare scores to compute I for set 2 (validation)
-    disp('Preparing scores to compute I for set 2 (validation)...');
     
-    Nbatches = ceil(N(2)/batch_size);
+    XX{sidx} = cell2mat(X);
+    YY{sidx} = cell2mat(Y);
+    
+    XX2{sidx} = sum(XX{sidx}.*XX{sidx},2);
+    
+    N(sidx) = size(XX{sidx},1);
+    
+end
 
-    x1 = XX{1};
-    xx1 = XX2{1};
+clear X Y REG
 
-    x2 = cell(Nbatches, 1);
-    xx2 = cell(Nbatches, 1);
+% prepare scores to compute I for set 2 (validation)
+disp('Preparing scores to compute I for set 2 (validation)...');
+
+Nbatches = ceil(N(2)/batch_size);
+
+x1 = XX{1};
+xx1 = XX2{1};
+
+x2 = cell(Nbatches, 1);
+xx2 = cell(Nbatches, 1);
+for bidx=1:Nbatches
+    
+    start_idx = (bidx-1)*batch_size+1;
+    end_idx = min(bidx*batch_size, N(2));
+    
+    x2{bidx} = XX{2}(start_idx:end_idx, :)';
+    xx2{bidx} = XX2{2}(start_idx:end_idx)';
+end
+
+clear XX XX2;
+
+
+% compute I for set 2 (validation)
+disp('Computing I for set 2 (validation)...');
+
+m = matfile(fullfile(io_dir, ['I_' camera '_' set_name{1} '_' set_name{2} '.mat']), 'Writable', true);
+m.I = zeros(Kmax, 1);
+
+for bidx=1:Nbatches
+    
+    start_idx = (bidx-1)*batch_size+1;
+    end_idx = min(bidx*batch_size, N(2));
+    Dbatch = bsxfun( @plus, xx1, xx2{bidx} ) - 2*x1*x2{bidx};
+    
+    [~, I] = sort(Dbatch, 1);
+    
+    m.I(:, start_idx:end_idx) = I(1:Kmax, :);
+    
+    disp(num2str(bidx));
+    
+end
+
+% prepare scores to compute I for set 1 (train)
+disp('Preparing scores to compute I for set 1 (train)...');
+
+Nbatches = ceil(N(1)/batch_size);
+
+x1cell = cell(Nbatches, 1);
+xx1cell = cell(Nbatches, 1);
+for bidx=1:Nbatches
+    
+    start_idx = (bidx-1)*batch_size+1;
+    end_idx = min(bidx*batch_size, N(1));
+    
+    x1cell{bidx} = x1(start_idx:end_idx, :)';
+    xx1cell{bidx} = xx1(start_idx:end_idx)';
+end
+
+clear x2 xx2;
+
+% compute I for set 1 (train)
+disp('Computing I for set 1 (train)...');
+
+m = matfile(fullfile(io_dir, ['I_' camera '_' set_name{1} '_' set_name{1} '.mat']), 'Writable', true);
+m.I = zeros(Kmax, 1);
+
+for bidx=1:Nbatches
+    
+    start_idx = (bidx-1)*batch_size+1;
+    end_idx = min(bidx*batch_size, N(1));
+    Dbatch = bsxfun( @plus, xx1, xx1cell{bidx} ) - 2*x1*x1cell{bidx};
+    
+    [~, I] = sort(Dbatch, 1);
+    
+    m.I(:, start_idx:end_idx) = I(1:Kmax, :);
+    
+    disp(num2str(bidx));
+    
+end
+
+% predict on set 2 (validation) for different Ks
+disp('Predict on set 2 (validation) for different Ks...');
+
+m = matfile(fullfile(io_dir, ['I_' camera '_' set_name{1} '_' set_name{2} '.mat']), 'Writable', true);
+
+Nbatches = ceil(N(2)/batch_size);
+
+for k=Kvalues
+    
+    Ypred = zeros(N(2), 1);
+    
+    Kcurrent = min(k, N(1));
+    
     for bidx=1:Nbatches
-    
+        
         start_idx = (bidx-1)*batch_size+1;
         end_idx = min(bidx*batch_size, N(2));
-    
-        x2{bidx} = XX{2}(start_idx:end_idx, :)';
-        xx2{bidx} = XX2{2}(start_idx:end_idx)';
-    end
-    
-    clear XX XX2;
-
-    
-    % compute I for set 2 (validation)
-    disp('Computing I for set 2 (validation)...');
-    
-    m = matfile(fullfile(io_dir, ['I_' camera '_' set_name{1} '_' set_name{2} '.mat']), 'Writable', true);
-    m.I = zeros(Kmax, 1);
-    
-    for bidx=1:Nbatches
         
-        start_idx = (bidx-1)*batch_size+1;
-        end_idx = min(bidx*batch_size, N(2));
-        Dbatch = bsxfun( @plus, xx1, xx2{bidx} ) - 2*x1*x2{bidx};
-
-        [~, I] = sort(Dbatch, 1);
-       
-        m.I(:, start_idx:end_idx) = I(1:Kmax, :);
+        if Kcurrent==1
+            Ypred(start_idx:end_idx) = mode(YY{1}( m.I(1:Kcurrent, start_idx:end_idx) )',1)';
+        else
+            Ypred(start_idx:end_idx) = mode(YY{1}( m.I(1:Kcurrent, start_idx:end_idx) ),1)';
+        end
         
-        disp(num2str(bidx));
-    
     end
+    
+    Ypred = mat2cell(Ypred, cell2mat(NframesPerCat{2}));
+    save(fullfile(io_dir, ['Y_' num2str(Kcurrent) 'NN_' camera '_' set_name{2} '.mat']), 'Ypred', '-v7.3');
+    
+end
 
-    % prepare scores to compute I for set 1 (train)
-    disp('Preparing scores to compute I for set 1 (train)...');
-    
-    Nbatches = ceil(N(1)/batch_size);
+% predict on set 1 (train) for different Ks
+disp('Predict on set 1 (train) for different Ks...');
 
-    x1cell = cell(Nbatches, 1);
-    xx1cell = cell(Nbatches, 1);
-    for bidx=1:Nbatches
-    
-        start_idx = (bidx-1)*batch_size+1;
-        end_idx = min(bidx*batch_size, N(1));
-    
-        x1cell{bidx} = x1(start_idx:end_idx, :)';
-        xx1cell{bidx} = xx1(start_idx:end_idx)';
-    end
+m = matfile(fullfile(io_dir, ['I_' camera '_' set_name{1} '_' set_name{1} '.mat']), 'Writable', true);
 
-    clear x2 xx2;
+Nbatches = ceil(N(1)/batch_size);
+
+for k=Kvalues
     
-    % compute I for set 1 (train)
-    disp('Computing I for set 1 (train)...');
+    Ypred = zeros(N(1), 1);
     
-    m = matfile(fullfile(io_dir, ['I_' camera '_' set_name{1} '_' set_name{1} '.mat']), 'Writable', true);
-    m.I = zeros(Kmax, 1);
+    Kcurrent = min(k, N(1));
     
     for bidx=1:Nbatches
         
         start_idx = (bidx-1)*batch_size+1;
         end_idx = min(bidx*batch_size, N(1));
-        Dbatch = bsxfun( @plus, xx1, xx1cell{bidx} ) - 2*x1*x1cell{bidx};
-
-        [~, I] = sort(Dbatch, 1);
-       
-        m.I(:, start_idx:end_idx) = I(1:Kmax, :);
         
-        disp(num2str(bidx));
-    
-    end
-    
-    % predict on set 2 (validation) for different Ks
-    disp('Predict on set 2 (validation) for different Ks...');
-    
-    m = matfile(fullfile(io_dir, ['I_' camera '_' set_name{1} '_' set_name{2} '.mat']), 'Writable', true);
-    
-    Nbatches = ceil(N(2)/batch_size);
-    
-    for k=Kvalues
-        
-        Ypred = zeros(N(2), 1);
-        
-        Kcurrent = min(k, N(1));
-        
-        for bidx=1:Nbatches
-            
-            start_idx = (bidx-1)*batch_size+1;
-            end_idx = min(bidx*batch_size, N(2));
-            
-            if Kcurrent==1
-                Ypred(start_idx:end_idx) = mode(YY{1}( m.I(1:Kcurrent, start_idx:end_idx) )',1)';
-            else
-                Ypred(start_idx:end_idx) = mode(YY{1}( m.I(1:Kcurrent, start_idx:end_idx) ),1)';
-            end
-            
+        if Kcurrent==1
+            Ypred(start_idx:end_idx) = mode(YY{1}( m.I(1:Kcurrent, start_idx:end_idx) )',1)';
+        else
+            Ypred(start_idx:end_idx) = mode(YY{1}( m.I(1:Kcurrent, start_idx:end_idx) ),1)';
         end
         
-        Ypred = mat2cell(Ypred, cell2mat(NframesPerCat{2}));
-        save(fullfile(io_dir, ['Y_' num2str(Kcurrent) 'NN_' camera '_' set_name{2} '.mat']), 'Ypred', '-v7.3');
-        
     end
     
-    % predict on set 1 (train) for different Ks
-    disp('Predict on set 1 (train) for different Ks...');
-   
-    m = matfile(fullfile(io_dir, ['I_' camera '_' set_name{1} '_' set_name{1} '.mat']), 'Writable', true);
+    Ypred = mat2cell(Ypred, cell2mat(NframesPerCat{1}));
+    save(fullfile(io_dir, ['Y_' num2str(Kcurrent) 'NN_' camera '_' set_name{1} '.mat']), 'Ypred', '-v7.3');
     
-    Nbatches = ceil(N(1)/batch_size);
-    
-    for k=Kvalues
-        
-        Ypred = zeros(N(1), 1);
-        
-        Kcurrent = min(k, N(1));
-        
-        for bidx=1:Nbatches
-            
-            start_idx = (bidx-1)*batch_size+1;
-            end_idx = min(bidx*batch_size, N(1));
-            
-            if Kcurrent==1
-                Ypred(start_idx:end_idx) = mode(YY{1}( m.I(1:Kcurrent, start_idx:end_idx) )',1)';
-            else
-                Ypred(start_idx:end_idx) = mode(YY{1}( m.I(1:Kcurrent, start_idx:end_idx) ),1)';
-            end
-            
-        end
-        
-        Ypred = mat2cell(Ypred, cell2mat(NframesPerCat{1}));
-        save(fullfile(io_dir, ['Y_' num2str(Kcurrent) 'NN_' camera '_' set_name{1} '.mat']), 'Ypred', '-v7.3');
-        
-    end
- 
 end
