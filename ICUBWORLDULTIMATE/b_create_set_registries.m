@@ -3,7 +3,8 @@
 FEATURES_DIR = '/Users/giulia/REPOS/objrecpipe_mat';
 addpath(genpath(FEATURES_DIR));
 
-DATA_DIR = '/Volumes/MyPassport';
+%DATA_DIR = '/Volumes/MyPassport';
+DATA_DIR = '/data/giulia/ICUBWORLD_ULTIMATE';
 
 %% Dataset info
 
@@ -25,7 +26,19 @@ Ntransfs = opts.Transfs.Count;
 Ndays = opts.Days.Count;
 Ncameras = opts.Cameras.Count;
 
-%% Whether to create the ImageNet labels
+%% Set up the esperiments
+
+% Default sets that are created
+
+set_names_prefix = {'train_', 'val_', 'test_'};
+Nsets = length(set_names_prefix);
+
+% Experiment kind
+
+experiment = 'categorization';
+%experiment = 'identification';
+
+% Whether to create the ImageNet labels
 
 if strcmp(experiment, 'categorization') 
     create_imnetlabels = true;
@@ -33,109 +46,39 @@ else
     create_imnetlabels = [];
 end
 
-%% Whether to create the full path registries (e.g. for DIGITS)
+% Choose categories
 
-create_fullpath = false;
+cat_idx_all = { [9 13], ...
+    [8 9 13 14 15], ...
+    [3 8 9 11 12 13 14 15 19 20], ...
+    [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20] };
 
-if create_fullpath
-    %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid384_disp_finaltree');
-    %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb60_disp_finaltree');
-    dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid256_disp_finaltree');
-    %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb30_disp_finaltree');
-end
-
-%% Input registries from which to select the subsets
-
-reg_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_registries/full_registries');
-check_input_dir(reg_dir);
-
-%% Experiment kind
-
-experiment = 'categorization';
-%experiment = 'identification';
-
-%% Output root dir for registries of the subsets
-
-output_dir_regtxt = fullfile(DATA_DIR, 'iCubWorldUltimate_registries', experiment);
-
-%% Default sets that are created
-
-set_names = {'train_', 'val_', 'test_'};
-Nsets = length(set_names);
-
-%% Choose categories
-
-%cat_idx = [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20];
-%cat_idx = [3 8 9 11 12 13 14 15 19 20];
-cat_idx = [9 13];
-%cat_idx = [8 9 13 14 15];
-
-output_dir_regtxt = fullfile(output_dir_regtxt, ['Ncat_' num2str(length(cat_idx))]);
-check_output_dir(output_dir_regtxt);
-
-output_dir_regtxt = fullfile(output_dir_regtxt, strrep(strrep(num2str(cat_idx), '   ', '-'), '  ', '-'));
-check_output_dir(output_dir_regtxt);
-
-%% Choose objects per category (for each set)
-
-if strcmp(experiment, 'categorization')
-    obj_lists = {4:6, 4:6, 4:6};
-elseif strcmp(experiment, 'identification')
-    obj_list = 4:6;
-    obj_lists = {obj_list, obj_list, obj_list};
-end
-
-if strcmp(experiment, 'identification')
-    output_dir_regtxt = fullfile(output_dir_regtxt, strrep(strrep(num2str(obj_list), '   ', '-'), '  ', '-'));
-    check_output_dir(output_dir_regtxt);
-end
-
-%% Assign labels
-
-fid_labels = fopen(fullfile(output_dir_regtxt, 'labels.txt'), 'w');
+% Choose objects per category
 
 if strcmp(experiment, 'categorization')
     
-    Y_digits = containers.Map (cat_names(cat_idx), 0:(length(cat_idx)-1)); 
-    for line=cat_idx
-        fprintf(fid_labels, '%s %d\n', cat_names{line}, Y_digits(cat_names{line}));
-    end
-
+    obj_lists_all = { %{1:4, 5:7, 8:10}, ...
+        %{1, 5, [2 3 4 6 7 8 9 10]}, ...
+        %{1:6, 7, 8:10}, ...
+        {[1:6 8 9], 7, 10}};
+    
 elseif strcmp(experiment, 'identification')
     
-    % if we want to do identification then all objects are both in the
-    % 'trainval' and in the 'test' sets (obj_lists{1}==obj_lists{2})
-    
-    obj_names = repmat(cat_names(cat_idx)', length(obj_lists{1}),1);
-    obj_names = obj_names(:);
-    tmp = repmat(obj_lists{1}', length(cat_idx),1);
-    obj_names = strcat(obj_names, strrep(mat2cell(num2str(tmp), ones(length(tmp),1)), ' ', ''));
-    
-    Y_digits = containers.Map (obj_names, 0:(length(obj_names)-1)); 
-    
-    for line=1:length(obj_names)
-        fprintf(fid_labels, '%s %d\n', obj_names{line}, Y_digits(obj_names{line}));
+    id_exps = {1:3, 1:5, 1:7, 1:10};
+    obj_lists_all = cell(length(id_exps), 1);
+    for ii=1:length(id_exps)
+        obj_lists_all{ii} = repmat(id_exps(ii), 1, Nsets);
     end
+    
 end
 
-fclose(fid_labels);
-
-%% Choose transformation, day, camera (for each set)
-
-% you can set it to true in the identification experiment 
-% e.g. if the train and val sets are coincident (same transformation+day)
-% the camera is not to be considered in this division...
-if strcmp(experiment, 'identification') 
-    divide_trainval_perc = false;
-else
-    divide_trainval_perc = [];
-end
+% Choose transformation, day, camera
 
 %transf_lists = {1:Ntransfs, 1:Ntransfs, 1:Ntransfs};
-transf_lists = {2, 1, 3};
 %transf_lists = {[2 3], [2 3], [2 3]};
+transf_lists = {2, 2, 2};
 
-day_mappings = {1, 1, [1 2]};
+day_mappings = {1, 1, 1};
 day_lists = cell(Nsets,1);
 tmp = keys(opts.Days);
 for ii=1:Nsets
@@ -149,13 +92,18 @@ end
 %camera_lists = {[1 2], [1 2], [1 2]};
 camera_lists = {1, 1, 1};
 
-%% Specifiy validation percentage
+% Choose validation percentage
 
-% In the identification experiment, it is possible to divide 
-% train and val also in this way, e.g. if the sets are coincident
+% You can set it to true in the 'identification' experiment 
+% e.g. if the train and val sets are coincident 
+% (same transformation+day, the camera is not to be considered)
+if strcmp(experiment, 'identification') 
+    divide_trainval_perc = false;
+else
+    divide_trainval_perc = [];
+end
 
 if strcmp(experiment, 'identification') && divide_trainval_perc==true
-    % validation percentage
     validation_perc = 0.5;
     validation_step = 1/validation_perc;
 else
@@ -163,135 +111,216 @@ else
     validation_step = [];
 end
 
-%% Create set names
+%% Set the IO root directories
 
-for ii=1:Nsets
-    set_names{ii} = [set_names{ii} strrep(strrep(num2str(obj_lists{ii}), '   ', '-'), '  ', '-')];
-    set_names{ii} = [set_names{ii} '_tr_' strrep(strrep(num2str(transf_lists{ii}), '   ', '-'), '  ', '-')];
-    set_names{ii} = [set_names{ii} '_cam_' strrep(strrep(num2str(camera_lists{ii}), '   ', '-'), '  ', '-')];
-    set_names{ii} = [set_names{ii} '_day_' strrep(strrep(num2str(day_mappings{ii}), '   ', '-'), '  ', '-')];
+% Input registries from which to select the subsets
+
+reg_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_registries/full_registries');
+check_input_dir(reg_dir);
+
+% Output root dir for registries of the subsets
+
+output_dir_regtxt_root = fullfile(DATA_DIR, 'iCubWorldUltimate_registries', experiment);
+
+if create_fullpath
+    output_dir_regtxt_root_fullpath = fullfile([dset_dir '_experiments'], 'registries', experiment);              
 end
 
-%% Create the registries REG and the labels Y (ImageNet labels), Ynew
+%% Whether to create the full-path registries (e.g. for DIGITS)
 
-for sidx=1:length(set_names)
+create_fullpath = true;
+
+if create_fullpath
+    dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid384_disp_finaltree');
+    %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb60_disp_finaltree');
+    %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid256_disp_finaltree');
+    %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb30_disp_finaltree');
+end
+
+%% For each experiment, go!
+
+for icat=1:length(cat_idx_all)
     
-    set_name = set_names{sidx};
+    cat_idx = cat_idx_all{icat};
     
-    day_list = day_lists{sidx};
-    obj_list = obj_lists{sidx};
-    transf_list = transf_lists{sidx};
-    camera_list = camera_lists{sidx};
-    
-    REG = cell(Ncat, 1);
-    
-    Y = cell(Ncat, 1);
-    fid_Y = fopen(fullfile(output_dir_regtxt, [set_name '_Y.txt']), 'w');
-    
-    if strcmp(experiment, 'categorization') && create_imnetlabels
-        Yimnet = cell(Ncat, 1);
-        fid_Yimnet = fopen(fullfile(output_dir_regtxt, [set_name '_Yimnet.txt']), 'w');
-    end
-    
-    if create_fullpath
-        if strcmp(experiment, 'categorizaion') && create_imnetlabels
-            fid_Yimnet_fullpath = fopen(fullfile(output_dir_regtxt, [set_name '_fullpath_Yimnet.txt']), 'w');
+    for iobj=1:length(obj_lists_all)
+        
+        obj_lists = obj_lists_all{iobj};
+        
+        % Assign the proper output directory
+        
+        output_dir_regtxt_relative = fullfile(['Ncat_' num2str(length(cat_idx))], strrep(strrep(num2str(cat_idx), '   ', '-'), '  ', '-')); 
+        if strcmp(experiment, 'identification')
+            output_dir_regtxt_relative = fullfile(output_dir_regtxt_relative, strrep(strrep(num2str(obj_lists), '   ', '-'), '  ', '-'));
         end
-        fid_Y_fullpath = fopen(fullfile(output_dir_regtxt, [set_name '_fullpath_Y.txt']), 'w');
-    end
-    
-    for cc=cat_idx
         
-        reg_path = fullfile(reg_dir, [cat_names{cc} '.txt']);
+        output_dir_regtxt = fullfile(output_dir_regtxt_root, output_dir_regtxt_relative);
+        check_output_dir(output_dir_regtxt);
         
-        loader = Features.GenericFeature();
-        loader.assign_registry_and_tree_from_file(reg_path, [], []);
+        if create_fullpath 
+            output_dir_regtxt_fullpath = fullfile(output_dir_regtxt_root_fullpath, output_dir_regtxt_relative);
+            check_output_dir(output_dir_regtxt_fullpath);
+        end
         
-        flist_splitted = regexp(loader.Registry, '/', 'split');
-        clear loader;
-        flist_splitted = vertcat(flist_splitted{:});
-        flist_splitted(:,1) = [];
+        % Assign the Y labels
         
-        tobeloaded = zeros(length(flist_splitted), 1);
+        fid_labels = fopen(fullfile(output_dir_regtxt, 'labels.txt'), 'w');
         
-        for oo=obj_list
+        if strcmp(experiment, 'categorization')
             
-            oo_tobeloaded = strcmp(flist_splitted(:,1), strcat(cat_names{cc}, num2str(oo)));
+            Y_digits = containers.Map (cat_names(cat_idx), 0:(length(cat_idx)-1));
+            for line=cat_idx
+                fprintf(fid_labels, '%s %d\n', cat_names{line}, Y_digits(cat_names{line}));
+            end
             
-            for tt=transf_list
+        elseif strcmp(experiment, 'identification')
+            
+            % if we want to do identification then all objects are both in the
+            % 'trainval' and in the 'test' sets (obj_lists{1}==obj_lists{2})
+            obj_names = repmat(cat_names(cat_idx)', length(obj_lists{1}),1);
+            obj_names = obj_names(:);
+            tmp = repmat(obj_lists{1}', length(cat_idx),1);
+            obj_names = strcat(obj_names, strrep(mat2cell(num2str(tmp), ones(length(tmp),1)), ' ', ''));
+            Y_digits = containers.Map (obj_names, 0:(length(obj_names)-1));
+            for line=1:length(obj_names)
+                fprintf(fid_labels, '%s %d\n', obj_names{line}, Y_digits(obj_names{line}));
+            end
+        end
+        
+        fclose(fid_labels);
+        
+        % Create the set names
+        
+        for ii=1:Nsets
+            set_names{ii} = [set_names_prefix{ii} strrep(strrep(num2str(obj_lists{ii}), '   ', '-'), '  ', '-')];
+            set_names{ii} = [set_names{ii} '_tr_' strrep(strrep(num2str(transf_lists{ii}), '   ', '-'), '  ', '-')];
+            set_names{ii} = [set_names{ii} '_cam_' strrep(strrep(num2str(camera_lists{ii}), '   ', '-'), '  ', '-')];
+            set_names{ii} = [set_names{ii} '_day_' strrep(strrep(num2str(day_mappings{ii}), '   ', '-'), '  ', '-')];
+        end
+        
+        % Create the registries REG and the labels Yimnet (ImageNet labels), Y
+        
+        for sidx=1:length(set_names)
+            
+            set_name = set_names{sidx};
+            
+            day_list = day_lists{sidx};
+            obj_list = obj_lists{sidx};
+            transf_list = transf_lists{sidx};
+            camera_list = camera_lists{sidx};
+            
+            REG = cell(Ncat, 1);
+            
+            Y = cell(Ncat, 1);
+            fid_Y = fopen(fullfile(output_dir_regtxt, [set_name '_Y.txt']), 'w');
+            
+            if strcmp(experiment, 'categorization') && create_imnetlabels
+                Yimnet = cell(Ncat, 1);
+                fid_Yimnet = fopen(fullfile(output_dir_regtxt, [set_name '_Yimnet.txt']), 'w');
+            end
+            
+            if create_fullpath
+                if strcmp(experiment, 'categorization') && create_imnetlabels
+                    fid_Yimnet_fullpath = fopen(fullfile(output_dir_regtxt_fullpath, [set_name '_fullpath_Yimnet.txt']), 'w');
+                end
+                fid_Y_fullpath = fopen(fullfile(output_dir_regtxt_fullpath, [set_name '_fullpath_Y.txt']), 'w');
+            end
+            
+            for cc=cat_idx
                 
-                tt_tobeloaded = oo_tobeloaded & strcmp(flist_splitted(:,2), transf_names(tt));
+                reg_path = fullfile(reg_dir, [cat_names{cc} '.txt']);
                 
-                for dd=day_list
+                loader = Features.GenericFeature();
+                loader.assign_registry_and_tree_from_file(reg_path, [], []);
+                
+                flist_splitted = regexp(loader.Registry, '/', 'split');
+                clear loader;
+                flist_splitted = vertcat(flist_splitted{:});
+                flist_splitted(:,1) = [];
+                
+                tobeloaded = zeros(length(flist_splitted), 1);
+                
+                for oo=obj_list
                     
-                    dd_tobeloaded = tt_tobeloaded & strcmp(flist_splitted(:,3), day_names(dd));
+                    oo_tobeloaded = strcmp(flist_splitted(:,1), strcat(cat_names{cc}, num2str(oo)));
                     
-                    for ee=camera_list
+                    for tt=transf_list
                         
-                        ee_tobeloaded = dd_tobeloaded & strcmp(flist_splitted(:,4), camera_names(ee));
+                        tt_tobeloaded = oo_tobeloaded & strcmp(flist_splitted(:,2), transf_names(tt));
                         
-                        tobeloaded = tobeloaded + ee_tobeloaded;
-                        
+                        for dd=day_list
+                            
+                            dd_tobeloaded = tt_tobeloaded & strcmp(flist_splitted(:,3), day_names(dd));
+                            
+                            for ee=camera_list
+                                
+                                ee_tobeloaded = dd_tobeloaded & strcmp(flist_splitted(:,4), camera_names(ee));
+                                
+                                tobeloaded = tobeloaded + ee_tobeloaded;
+                                
+                            end
+                        end
                     end
                 end
-            end
-        end
-        
-        flist_splitted = flist_splitted(tobeloaded==1, :);
-        
-        if strcmp(experiment, 'identification') && divide_trainval_perc==true
-           if strncmp(set_name, 'tra', 3)
-               flist_splitted(1:validation_step:end,:) = [];
-           elseif strncmp(set_name, 'val', 3)
-               flist_splitted = flist_splitted(1:validation_step:end,:);
-           end
-        end
-        
-        REG{opts.Cat(cat_names{cc})} = fullfile(flist_splitted(:,1), flist_splitted(:,2), flist_splitted(:,3), flist_splitted(:,4), flist_splitted(:,5));
-        
-        if strcmp(experiment, 'categorization') 
-            if create_imnetlabels
-                Yimnet{opts.Cat(cat_names{cc})} = ones(length(REG{opts.Cat(cat_names{cc})}), 1)*double(opts.Cat_ImnetLabels(cat_names{cc}));
-            end
-            Y{opts.Cat(cat_names{cc})} = ones(length(REG{opts.Cat(cat_names{cc})}), 1)*Y_digits(cat_names{cc});
-        elseif strcmp(experiment, 'identification')
-            Y{opts.Cat(cat_names{cc})} = cell2mat(values(Y_digits, flist_splitted(:,1)));
-        end
-        
-        for line=1:length(REG{opts.Cat(cat_names{cc})})
-            
-            fprintf(fid_Y, '%s/%s %d\n', cat_names{cc}, REG{opts.Cat(cat_names{cc})}{line}, Y{opts.Cat(cat_names{cc})}(line));
-            if strcmp(experiment, 'categorization') && create_imnetlabels
-                fprintf(fid_Yimnet, '%s/%s %d\n', cat_names{cc}, REG{opts.Cat(cat_names{cc})}{line}, Yimnet{opts.Cat(cat_names{cc})}(line));
-            end
-            if create_fullpath
-                fprintf(fid_Y_fullpath, '%s/%s/%s %d\n', dset_dir, cat_names{cc}, REG{opts.Cat(cat_names{cc})}{line}, Y{opts.Cat(cat_names{cc})}(line));
-                if strcmp(experiment, 'categorization') && create_imnetlabels
-                    fprintf(fid_Yimnet_fullpath, '%s/%s/%s %d\n', dset_dir, cat_names{cc}, REG{opts.Cat(cat_names{cc})}{line}, Yimnet{opts.Cat(cat_names{cc})}(line));
+                
+                flist_splitted = flist_splitted(tobeloaded==1, :);
+                
+                if strcmp(experiment, 'identification') && divide_trainval_perc==true
+                    if strncmp(set_name, 'tra', 3)
+                        flist_splitted(1:validation_step:end,:) = [];
+                    elseif strncmp(set_name, 'val', 3)
+                        flist_splitted = flist_splitted(1:validation_step:end,:);
+                    end
                 end
+                
+                REG{opts.Cat(cat_names{cc})} = fullfile(flist_splitted(:,1), flist_splitted(:,2), flist_splitted(:,3), flist_splitted(:,4), flist_splitted(:,5));
+                
+                if strcmp(experiment, 'categorization')
+                    if create_imnetlabels
+                        Yimnet{opts.Cat(cat_names{cc})} = ones(length(REG{opts.Cat(cat_names{cc})}), 1)*double(opts.Cat_ImnetLabels(cat_names{cc}));
+                    end
+                    Y{opts.Cat(cat_names{cc})} = ones(length(REG{opts.Cat(cat_names{cc})}), 1)*Y_digits(cat_names{cc});
+                elseif strcmp(experiment, 'identification')
+                    Y{opts.Cat(cat_names{cc})} = cell2mat(values(Y_digits, flist_splitted(:,1)));
+                end
+                
+                for line=1:length(REG{opts.Cat(cat_names{cc})})
+                    
+                    fprintf(fid_Y, '%s/%s %d\n', cat_names{cc}, REG{opts.Cat(cat_names{cc})}{line}, Y{opts.Cat(cat_names{cc})}(line));
+                    if strcmp(experiment, 'categorization') && create_imnetlabels
+                        fprintf(fid_Yimnet, '%s/%s %d\n', cat_names{cc}, REG{opts.Cat(cat_names{cc})}{line}, Yimnet{opts.Cat(cat_names{cc})}(line));
+                    end
+                    if create_fullpath
+                        fprintf(fid_Y_fullpath, '%s/%s/%s %d\n', dset_dir, cat_names{cc}, REG{opts.Cat(cat_names{cc})}{line}, Y{opts.Cat(cat_names{cc})}(line));
+                        if strcmp(experiment, 'categorization') && create_imnetlabels
+                            fprintf(fid_Yimnet_fullpath, '%s/%s/%s %d\n', dset_dir, cat_names{cc}, REG{opts.Cat(cat_names{cc})}{line}, Yimnet{opts.Cat(cat_names{cc})}(line));
+                        end
+                    end
+                end
+                
+                disp([set_name ': ' cat_names(cc)]);
+                
             end
+            
+            save(fullfile(output_dir_regtxt, ['REG_' set_name '.mat']), 'REG', '-v7.3');
+            
+            save(fullfile(output_dir_regtxt, ['Y_' set_name '.mat']), 'Y', '-v7.3');
+            fclose(fid_Y);
+            
+            if strcmp(experiment, 'categorization') && create_imnetlabels
+                Y = Yimnet;
+                save(fullfile(output_dir_regtxt, ['Yimnet_' set_name '.mat']), 'Y', '-v7.3');
+                fclose(fid_Yimnet);
+            end
+            
+            if create_fullpath
+                if strcmp(experiment, 'categorizaion') && create_imnetlabels
+                    fclose(fid_Yimnet_fullpath);
+                end
+                fclose(fid_Y_fullpath);
+            end
+            
         end
-        
-        disp([set_name ': ' cat_names(cc)]);
-        
+   
     end
-    
-    save(fullfile(output_dir_regtxt, ['REG_' set_name '.mat']), 'REG', '-v7.3');
-    
-    save(fullfile(output_dir_regtxt, ['Y_' set_name '.mat']), 'Y', '-v7.3');
-    fclose(fid_Y);
-    
-    if strcmp(experiment, 'categorization') && create_imnetlabels
-        Y = Yimnet;
-        save(fullfile(output_dir_regtxt, ['Yimnet_' set_name '.mat']), 'Y', '-v7.3');
-        fclose(fid_Yimnet);
-    end
-    
-    if create_fullpath
-        if strcmp(experiment, 'categorizaion') && create_imnetlabels
-            fclose(fid_Yimnet_fullpath);
-        end
-        fclose(fid_Y_fullpath);
-    end
-    
 end

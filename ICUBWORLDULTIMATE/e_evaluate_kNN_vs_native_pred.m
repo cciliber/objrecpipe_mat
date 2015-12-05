@@ -1,20 +1,20 @@
-%% Setup 
+%% Setup
 
 FEATURES_DIR = '/data/giulia/REPOS/objrecpipe_mat';
 addpath(genpath(FEATURES_DIR));
 
-gurls_setup('/data/REPOS/GURLS/');
-vl_feat_setup();
+%DATA_DIR = '/Volumes/MyPassport';
+DATA_DIR = '/data/giulia/ICUBWORLD_ULTIMATE';
 
 %% Dataset info
 
-dset_info = fullfile(FEATURES_DIR, 'ICUBWORLDULTIMATE_test_offtheshelfnets', 'iCubWorldUltimate.txt');
+dset_info = fullfile(FEATURES_DIR, 'ICUBWORLDULTIMATE', 'iCubWorldUltimate.txt');
 dset_name = 'iCubWorldUltimate';
 
 opts = ICUBWORLDinit(dset_info);
 
 cat_names = keys(opts.Cat)';
-obj_names = keys(opts.Obj)';
+%obj_names = keys(opts.Obj)';
 transf_names = keys(opts.Transfs)';
 day_names = keys(opts.Days)';
 camera_names = keys(opts.Cameras)';
@@ -23,46 +23,323 @@ Ncat = opts.Cat.Count;
 Nobj = opts.Obj.Count;
 NobjPerCat = opts.ObjPerCat;
 Ntransfs = opts.Transfs.Count;
-%Ndays = opts.Days.Count;
 Ndays = length(unique(cell2mat(values(opts.Days))));
 Ncameras = opts.Cameras.Count;
 
-%% IO
+%% Set up the experiments
 
-cat_idx = [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20];
+% Default sets that are searched
 
-model = 'googlenet'; 
+set_names_prefix = {'train_', 'val_', 'test_'};
+Nsets = length(set_names_prefix);
+choose_set = 3;
+
+% Experiment kind
+
+experiment = 'categorization';
+%experiment = 'identification';
+
+% Mapping 
+
+%mapping = 'NN';
+mapping = 'none';
+
+% Whether to use the ImageNet labels
+
+if strcmp(experiment, 'categorization')
+    use_imnetlabels = true;
+else
+    use_imnetlabels = [];
+end
+
+% Choose categories
+
+cat_idx_all = { [9 13], ...
+    [8 9 13 14 15], ...
+    [3 8 9 11 12 13 14 15 19 20], ...
+    [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20] };
+
+% Choose objects per category
+
+if strcmp(experiment, 'categorization')
+    
+    obj_lists_all = { {1:4, 5:7, 8:10}, ...
+        {1, 5, [2 3 4 6 7 8 9 10]}, ...
+        {1:6, 7, 8:10}, ...
+        {[1:6 8 9], 7, 10}};
+    
+elseif strcmp(experiment, 'identification')
+    
+    id_exps = {1:3, 1:5, 1:7, 1:10};
+    obj_lists_all = cell(length(id_exps), 1);
+    for ii=1:length(id_exps)
+        obj_lists_all{ii} = repmat(id_exps(ii), 1, Nsets);
+    end
+    
+end
+
+% Choose transformation, day, camera
+
+%transf_lists = {1:Ntransfs, 1:Ntransfs, 1:Ntransfs};
+%transf_lists = {[2 3], [2 3], [2 3]};
+transf_lists = {2, 2, 2};
+
+day_mappings = {1, 1, 1};
+day_lists = cell(Nsets,1);
+tmp = keys(opts.Days);
+for ii=1:Nsets
+    for dd=1:length(day_mappings{ii})
+        tmp1 = tmp(cell2mat(values(opts.Days))==day_mappings{ii}(dd))';
+        tmp2 = str2num(cellfun(@(x) x(4:end), tmp1))';
+        day_lists{ii} = [day_lists{ii} tmp2];
+    end
+end
+
+%camera_lists = {[1 2], [1 2], [1 2]};
+camera_lists = {1, 1, 1};
+
+%% Set the IO root directories
+
+% Location of the scores
+
+dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid384_disp_finaltree');
+%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb60_disp_finaltree');
+%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid256_disp_finaltree');
+%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb30_disp_finaltree');
+
+exp_dir = fullfile([dset_dir '_experiments'], 'test_offtheshelfnets');
+
+model = 'googlenet';
 %model = 'bvlc_reference_caffenet';
 %model = 'vgg';
 
-%dset_dir = '/media/giulia/Elements/ICUBWORLD_ULTIMATE/iCubWorldUltimate_centroid384_disp_finaltree';
-dset_dir = '/data/giulia/DATASETS/iCubWorldUltimate_bb60_disp_finaltree';
-%dset_dir = '/data/giulia/DATASETS/iCubWorldUltimate_centroid256_disp_finaltree';
-%dset_dir = '/data/giulia/DATASETS/iCubWorldUltimate_bb30_disp_finaltree';
+input_dir_root = fullfile(exp_dir, 'predictions', model, experiment);
+check_input_dir(intput_dir_root);
 
-reg_dir = '/data/giulia/DATASETS/iCubWorldUltimate_digit_registries/test_offtheshelfnets';
-check_input_dir(reg_dir);
+output_dir_root = fullfile(exp_dir, 'predictions', model, experiment);
+check_output_dir(output_dir_root);
 
-input_dir = fullfile([dset_dir '_experiments'], 'test_offtheshelfnets', 'predictions', model);
-check_input_dir(input_dir);
+input_dir_regtxt_root = fullfile(DATA_DIR, 'iCubWorldUltimate_registries', experiment);
+check_input_dir(input_dir_regtxt_root);
 
-output_dir = fullfile([dset_dir '_experiments'], 'test_offtheshelfnets', 'predictions', model);
-check_output_dir(output_dir);
+%% For each experiment, go!
 
-%% 
+acc_global = -ones(length(cat_idx_all), length(obj_lists_all));
+K = -ones(length(cat_idx_all), length(obj_lists_all));
 
-mappings = {'1NN', 'none'};
+for icat=1:length(cat_idx_all)
+    
+    cat_idx = cat_idx_all{icat};
+    
+    for iobj=1:length(obj_lists_all)
+        
+        obj_lists = obj_lists_all{iobj};
+        
+        % Assign the proper IO directories
+        
+        dir_regtxt_relative = fullfile(['Ncat_' num2str(length(cat_idx))], strrep(strrep(num2str(cat_idx), '   ', '-'), '  ', '-'));
+        if strcmp(experiment, 'identification')
+            dir_regtxt_relative = fullfile(dir_regtxt_relative, strrep(strrep(num2str(obj_list), '   ', '-'), '  ', '-'));
+        end
+        
+        input_dir = fullfile(input_dir_root, dir_regtxt_relative);
+        check_input_dir(input_dir);
+        
+        output_dir = fullfile(output_dir_root, dir_regtxt_relative);
+        check_output_dir(output_dir);
+        
+        input_dir_regtxt = fullfile(input_dir_regtxt_root, dir_regtxt_relative);
+        check_input_dir(input_dir_regtxt);
+        
+        % Create set names
+        
+        for sidx=choose_set
+            set_names{sidx} = [set_names_prefix{sidx} strrep(strrep(num2str(obj_lists{sidx}), '   ', '-'), '  ', '-')];
+            set_names{sidx} = [set_names{sidx} '_tr_' strrep(strrep(num2str(transf_lists{sidx}), '   ', '-'), '  ', '-')];
+            set_names{sidx} = [set_names{sidx} '_cam_' strrep(strrep(num2str(camera_lists{sidx}), '   ', '-'), '  ', '-')];
+            set_names{sidx} = [set_names{sidx} '_day_' strrep(strrep(num2str(day_mappings{sidx}), '   ', '-'), '  ', '-')];
+        end
+        
+        %% Load REG, Y, Ypred and make suited variables
+        
+        for sidx=choose_set
+            
+            set_name = set_names{sidx};
+            obj_list = obj_lists{sidx};
+            transf_list = transf_lists{sidx};
+            camera_list = camera_lists{sidx};
+            day_mapping = day_mappings{sidx};
+            
+            % load Y and Ypred
+            if strcmp(experiment, 'categorization') && use_imnetlabels
+                load(fullfile(input_dir, ['Yimnet_' set_name '.mat']), 'Y');
+                if strcmp(mapping, 'none')
+                    load(fullfile(input_dir, ['Yimnet_none_' set_name '.mat']), 'Ypred', 'acc');
+                elseif strcmp(mapping, 'NN')
+                    load(fullfile(input_dir, ['Yimnet_none_' set_name '.mat']), 'Ypred', 'acc_crossval', 'Kvalues')
+                    acc_global(icat, iobj) = acc_crossval(3,(acc_crossval(3,:)~=-1));
+                    K(icat, iobj) = Kvalues(acc_crossval(3,:)~=-1);
+                end;
+            else
+                load(fullfile(input_dir, ['Y_' set_name '.mat']), 'Y');
+                 if strcmp(mapping, 'none')
+                    load(fullfile(input_dir, ['Y_none' set_name '.mat']), 'Ypred', 'acc');
+                 elseif strcmp(mapping, 'NN')
+                     load(fullfile(input_dir, ['Y_none' set_name '.mat']), 'Ypred', 'acc_crossval', 'Kvalues');
+                     acc_global(icat, iobj) = acc_crossval(3,(acc_crossval(3,:)~=-1));
+                     K(icat, iobj) = Kvalues(acc_crossval(3,:)~=-1);
+                 end
+            end
+            
+            % load REG
+            load(fullfile(input_dir_regtxt, ['REG_' set_name '.mat']));
+            
+            % store values to plot
+            accuracy = cell(Ncat, 1);
+            Ypred_mode = cell(Ncat, 1);
+            Ypred_01 = cell(Ncat, 1);      
+            for cc=cat_idx
+                
+                dirlist = cellfun(@fileparts, REG{opts.Cat(cat_names{cc})}, 'UniformOutput', false);
+                [dirlist, ia, ic] = unique(dirlist, 'stable');
+                % [C,ia,ic] = unique(A) % C = A(ia) % A = C(ic)
+                
+                dirlist_splitted = regexp(dirlist, '/', 'split');
+                dirlist_splitted = vertcat(dirlist_splitted{:});
+                
+                Nframes = zeros(length(dirlist),1);
+                for ii=1:length(dirlist)
+                    Nframes(ii) = sum(ic==ii);
+                end
+                startend = zeros(length(dirlist)+1,1);
+                startend(2:end) = cumsum(Nframes);
+                
+                accuracy{opts.Cat(cat_names{cc})} = zeros(NobjPerCat, Ntransfs, Ndays, Ncameras);
+                Ypred_mode{opts.Cat(cat_names{cc})} = zeros(NobjPerCat, Ntransfs, Ndays, Ncameras);
+                Ypred_01{opts.Cat(cat_names{cc})} = cell(NobjPerCat, Ntransfs, Ndays, Ncameras);
+                for ii=1:length(dirlist)
+                     
+                    obj = str2double(dirlist_splitted{ii,1}(regexp(dirlist_splitted{ii,1}, '\d'):end));
+                        
+                    transf = dirlist_splitted{ii,2};
+                    day = dirlist_splitted{ii,3};
+                    cam = dirlist_splitted{ii,4};
+                        
+                    idx_start = startend(ii)+1;
+                    idx_end = startend(ii+1);
+                    
+                    ytrue = Y{opts.Cat(cat_names{cc})}(idx_start:idx_end);
+                    ypred = Ypred{opts.Cat(cat_names{cc})}(idx_start:idx_end);
+                    
+                    io = obj;
+                    it = opts.Transfs(transf);
+                    ic = opts.Cameras(cam);
+                    id = opts.Days(day);
+                    
+                    Ypred_01{opts.Cat(cat_names{cc})}{io, it, id, ic} = (ytrue==ypred);
+                    accuracy{opts.Cat(cat_names{cc})}(io, it, id, ic) = compute_accuracy(ytrue, ypred, 'gurls');
+                    Ypred_mode{opts.Cat(cat_names{cc})}(io, it, id, ic) = mode(ypred);
+                    
+                    %x = X{opts.Cat(cat_names{cc})}(idx_start:idx_end, :);
+                    %xavg = mean(x,1);
+                    %[~, I] = max(xavg);
+                    %yavg = I-1;
+                    
+                end
+                
+            end
+            
+            % pred01
+ 
+            Nplots = length(length(cat_idx));
+            Ncols = min(Nplots, 5);
+            Nrows = ceil(Nplots/Ncols);
+            
+            for cc=1:Nplots
 
-set_names = {'even', 'odd'};
-
-accum_methods = {'predmode', 'predavg'};
-
-%% Read the registries & populate the cell structures
-
-%scores = cell(Ncat,1);
-scoresavg = cell(Ncat, 1);
-trueclass = cell(Ncat,1);
-for cc=cat_idx
+                CC = Ypred_01{opts.Cat(cat_names{cc})};
+                   
+                for it=1:length(transf_list)
+                     
+                    
+                    
+                    io = obj;
+                    it = opts.Transfs(transf);
+                    ic = opts.Cameras(cam);
+                    id = opts.Days(day);
+                    
+                    figure( (it-1)*length(day_mapping)*length(camera_list)+(id-1)*length(camera_list)+ic )
+                    subplot(Nrows, Ncols, cc)
+                        
+                    maxW = 1;
+                    for oo=1:NobjPerCat
+                        W = length(CC{io, it, id, ic});
+                        if W>maxW
+                            maxW = W;
+                        end
+                    end
+                    
+                    
+                    = Ypred_01{opts.Cat(cat_names{cc})}{io, it, ic, id};
+                    = accuracy{opts.Cat(cat_names{cc})}(io, it, ic, id);
+                    = Ypred_mode{opts.Cat(cat_names{cc})}(io, it, ic, id);
+                
+                    
+                    
+                    
+                    
+                    
+                    
+                    AA = -ones(NobjPerCat, maxW);
+                    for oo=1:NobjPerCat
+                        AA(oo, 1:length(CC{oo, opts.Transfs(cell2mat(ct)), chooseday, choosecam})) = CC{oo, opts.Transfs(cell2mat(ct)), chooseday, choosecam};
+                    end
+                    
+                    imagesc(AA)
+                    title(cat_names( cell2mat(values(opts.Cat))==cc))
+                    if max(max(AA))==0
+                        colormap(hh, [1 0 0; 0 0 0]);
+                    else
+                        colormap(hh, [1 0 0; 0 0 0; 1 1 1]);
+                    end
+                    
+                    suptitle([mapping ' ' cell2mat(ct) ' ' num2str(chooseday) ' ' num2str(choosecam)])
+                    saveas(gcf, fullfile(output_dir, 'figs', [mapping '_' cell2mat(ct) '_' num2str(chooseday) '_' num2str(choosecam) '.fig']));
+                    
+                
+                            
+                            
+                    
+                    
+                
+                
+                % Ypred_mode
+                figure(2)
+                % accuracy
+                figure(3)
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+            end
+        end
+    end
+    
+    %scores = cell(Ncat,1);
+    scoresavg = cell(Ncat, 1);
+    trueclass = cell(Ncat,1);
+    for cc=cat_idx
     %scores{opts.Cat(cat_names{cc})} = cell(NobjPerCat, Ntransfs, Ndays, Ncameras);
     scoresavg{opts.Cat(cat_names{cc})} = zeros(NobjPerCat, Ntransfs, Ndays, Ncameras, 1000);
     trueclass{opts.Cat(cat_names{cc})} = cell(NobjPerCat, Ntransfs, Ndays, Ncameras);
@@ -75,7 +352,7 @@ for sidx=1:length(set_names)
     load(fullfile(output_dir, ['REG_' set_name '.mat'])); % REG
     load(fullfile(output_dir, ['X_' set_name '.mat'])); % X
     load(fullfile(output_dir, ['Y_' set_name '.mat'])); % Y
-   
+    
     for cc=1:Ncat
         if ~isempty(REG{cc})
             
@@ -139,51 +416,51 @@ for midx = 1:length(mappings)
             predaccum{cc} = zeros(NobjPerCat, Ntransfs, Ndays, Ncameras);
         end
     end
-
-    for sidx=1:length(set_names)
     
+    for sidx=1:length(set_names)
+        
         set_name = set_names{sidx};
         
         load(fullfile(output_dir, ['REG_' set_name '.mat'])); % REG
         load(fullfile(output_dir, ['Y_' set_name '.mat'])); % Y
         load(fullfile(output_dir, ['Y_' mapping '_' set_name '.mat'])); % Ypred
-    
+        
         for cc=1:Ncat
             if ~isempty(REG{cc})
-           
+                
                 dirlist = cellfun(@fileparts, REG{cc}, 'UniformOutput', false);
                 [dirlist, ia, ic] = unique(dirlist, 'stable');
                 % [C,ia,ic] = unique(A) % C = A(ia) % A = C(ic)
-            
+                
                 dirlist_splitted = regexp(dirlist, '/', 'split');
                 dirlist_splitted = vertcat(dirlist_splitted{:});
-            
+                
                 Nframes = zeros(length(dirlist),1);
                 for ii=1:length(dirlist)
                     Nframes(ii) = sum(ic==ii);
                 end
                 startend = zeros(length(dirlist)+1,1);
                 startend(2:end) = cumsum(Nframes);
-            
-                for ii=1:length(dirlist)
                 
+                for ii=1:length(dirlist)
+                    
                     obj = str2double(dirlist_splitted{ii,1}(regexp(dirlist_splitted{ii,1}, '\d'):end));
                     transf = dirlist_splitted{ii,2};
                     day = dirlist_splitted{ii,3};
                     cam = dirlist_splitted{ii,4};
-                
+                    
                     idx_start = startend(ii)+1;
                     idx_end = startend(ii+1);
-                
+                    
                     ypred = Ypred{cc}(idx_start:idx_end);
                     ytrue = Y{cc}(idx_start:idx_end);
-                
+                    
                     %predclass{cc}{obj, opts.Transfs(transf), opts.Days(day), opts.Cameras(cam)} = ypred;
                     pred01{cc}{obj, opts.Transfs(transf), opts.Days(day), opts.Cameras(cam)} = (ypred == ytrue);
                     accframebased{cc}(obj, opts.Transfs(transf), opts.Days(day), opts.Cameras(cam)) = compute_accuracy(ytrue, ypred, 'gurls');
-                
+                    
                     predaccum{cc}(obj, opts.Transfs(transf), opts.Days(day), opts.Cameras(cam)) = mode(ypred);
-                
+                    
                 end
                 
             end
@@ -198,7 +475,7 @@ for midx = 1:length(mappings)
     
 end
 
-%% 
+%%
 
 load(fullfile(output_dir, 'scoresavg.mat'), 'scoresavg');
 load(fullfile(output_dir, 'trueclass.mat'), 'trueclass');
@@ -265,7 +542,7 @@ for midx = 1:length(mappings)
             other_sidx = -sidx + 3;
             
             load(fullfile(output_dir, ['REG_' set_name '.mat'])); % REG
-                    
+            
             for cc=1:Ncat
                 if ~isempty(REG{cc})
                     
@@ -275,7 +552,7 @@ for midx = 1:length(mappings)
                     
                     dirlist_splitted = regexp(dirlist, '/', 'split');
                     dirlist_splitted = vertcat(dirlist_splitted{:});
-
+                    
                     tmpy = kNNClassify_multiclass(cell2mat(xx{other_sidx}), cell2mat(yy{other_sidx}), k, xx{sidx}{cc});
                     
                     for ii=1:length(dirlist)
@@ -284,7 +561,7 @@ for midx = 1:length(mappings)
                         transf = dirlist_splitted{ii,2};
                         day = dirlist_splitted{ii,3};
                         cam = dirlist_splitted{ii,4};
-
+                        
                         predaccum{cc}(obj, opts.Transfs(transf), opts.Days(day), opts.Cameras(cam)) = tmpy(ii);
                     end
                 end
@@ -318,18 +595,18 @@ for midx=1:length(mappings)
     
     mapping = mappings{midx};
     load(fullfile(output_dir, ['pred01_' mapping '.mat']), 'pred01');
-
-    for ct = choosetransf
     
+    for ct = choosetransf
+        
         ff = figure;
         
         for cc=1:Ncat
             if ~isempty(pred01{cc})
-            
+                
                 hh = subplot(4, 5, double(cc));
-            
+                
                 CC = pred01{cc};
-            
+                
                 maxW = 1;
                 for oo=1:NobjPerCat
                     W = length(CC{oo, opts.Transfs(cell2mat(ct)), chooseday, choosecam});
@@ -337,28 +614,28 @@ for midx=1:length(mappings)
                         maxW = W;
                     end
                 end
-
+                
                 AA = -ones(NobjPerCat, maxW);
                 for oo=1:NobjPerCat
                     AA(oo, 1:length(CC{oo, opts.Transfs(cell2mat(ct)), chooseday, choosecam})) = CC{oo, opts.Transfs(cell2mat(ct)), chooseday, choosecam};
                 end
-            
+                
                 imagesc(AA)
                 title(cat_names( cell2mat(values(opts.Cat))==cc))
                 if max(max(AA))==0
                     colormap(hh, [1 0 0; 0 0 0]);
                 else
                     colormap(hh, [1 0 0; 0 0 0; 1 1 1]);
-                end 
-
-            end  
+                end
+                
+            end
         end
-    
+        
         suptitle([mapping ' ' cell2mat(ct) ' ' num2str(chooseday) ' ' num2str(choosecam)])
         saveas(gcf, fullfile(output_dir, 'figs', [mapping '_' cell2mat(ct) '_' num2str(chooseday) '_' num2str(choosecam) '.fig']));
-    
+        
     end
-
+    
 end
 
 %% Fig. 2: predmode or predavg
