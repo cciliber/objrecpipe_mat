@@ -3,12 +3,12 @@
 FEATURES_DIR = '/data/giulia/REPOS/objrecpipe_mat';
 addpath(genpath(FEATURES_DIR));
 
-%DATA_DIR = '/Volumes/MyPassport';
-DATA_DIR = '/data/giulia/ICUBWORLD_ULTIMATE';
+DATA_DIR = '/Volumes/MyPassport';
+%DATA_DIR = '/data/giulia/ICUBWORLD_ULTIMATE';
 
 %% Dataset info
 
-dset_info = fullfile(FEATURES_DIR, 'ICUBWORLDULTIMATE', 'iCubWorldUltimate.txt');
+dset_info = fullfile(DATA_DIR, 'iCubWorldUltimate_registries/info/iCubWorldUltimate.txt');
 dset_name = 'iCubWorldUltimate';
 
 opts = ICUBWORLDinit(dset_info);
@@ -55,17 +55,18 @@ end
 % Choose categories
 
 cat_idx_all = { [9 13], ...
-    [8 9 13 14 15], ...
-    [3 8 9 11 12 13 14 15 19 20], ...
-    [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20] };
+    [8 9 13 14 15]%, ...
+    %[3 8 9 11 12 13 14 15 19 20], ...
+    %[2 3 4 5 6 7 8 9 11 12 13 14 15 19 20] 
+    };
 
 % Choose objects per category
 
 if strcmp(experiment, 'categorization')
     
-    obj_lists_all = { {1:4, 5:7, 8:10}, ...
-        {1, 5, [2 3 4 6 7 8 9 10]}, ...
-        {1:6, 7, 8:10}, ...
+    obj_lists_all = { %{1:4, 5:7, 8:10}, ...
+        %{1, 5, [2 3 4 6 7 8 9 10]}, ...
+        %{1:6, 7, 8:10}, ...
         {[1:6 8 9], 7, 10}};
     
 elseif strcmp(experiment, 'identification')
@@ -102,19 +103,19 @@ camera_lists = {1, 1, 1};
 
 % Location of the scores
 
-dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid384_disp_finaltree');
+%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid384_disp_finaltree');
 %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb60_disp_finaltree');
-%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid256_disp_finaltree');
+dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid256_disp_finaltree');
 %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb30_disp_finaltree');
 
 exp_dir = fullfile([dset_dir '_experiments'], 'test_offtheshelfnets');
 
-model = 'googlenet';
-%model = 'bvlc_reference_caffenet';
+%model = 'googlenet';
+model = 'bvlc_reference_caffenet';
 %model = 'vgg';
 
 input_dir_root = fullfile(exp_dir, 'predictions', model, experiment);
-check_input_dir(intput_dir_root);
+check_input_dir(input_dir_root);
 
 output_dir_root = fullfile(exp_dir, 'predictions', model, experiment);
 check_output_dir(output_dir_root);
@@ -147,6 +148,7 @@ for icat=1:length(cat_idx_all)
         
         output_dir = fullfile(output_dir_root, dir_regtxt_relative);
         check_output_dir(output_dir);
+        check_output_dir(fullfile(output_dir, 'figs'));
         
         input_dir_regtxt = fullfile(input_dir_regtxt_root, dir_regtxt_relative);
         check_input_dir(input_dir_regtxt);
@@ -172,7 +174,7 @@ for icat=1:length(cat_idx_all)
             
             % load Y and Ypred
             if strcmp(experiment, 'categorization') && use_imnetlabels
-                load(fullfile(input_dir, ['Yimnet_' set_name '.mat']), 'Y');
+                load(fullfile(input_dir_regtxt, ['Yimnet_' set_name '.mat']), 'Y');
                 if strcmp(mapping, 'none')
                     load(fullfile(input_dir, ['Yimnet_none_' set_name '.mat']), 'Ypred', 'acc');
                 elseif strcmp(mapping, 'NN')
@@ -181,7 +183,7 @@ for icat=1:length(cat_idx_all)
                     K(icat, iobj) = Kvalues(acc_crossval(3,:)~=-1);
                 end;
             else
-                load(fullfile(input_dir, ['Y_' set_name '.mat']), 'Y');
+                load(fullfile(input_dir_regtxt, ['Y_' set_name '.mat']), 'Y');
                  if strcmp(mapping, 'none')
                     load(fullfile(input_dir, ['Y_none' set_name '.mat']), 'Ypred', 'acc');
                  elseif strcmp(mapping, 'NN')
@@ -251,91 +253,80 @@ for icat=1:length(cat_idx_all)
             
             % pred01
  
-            Nplots = length(length(cat_idx));
+            Nplots = length(cat_idx);
             Ncols = min(Nplots, 5);
             Nrows = ceil(Nplots/Ncols);
             
             for cc=1:Nplots
 
-                CC = Ypred_01{opts.Cat(cat_names{cc})};
+                CC = Ypred_01{opts.Cat(cat_names{cat_idx(cc)})};
                    
-                for it=1:length(transf_list)
-                     
-                    
-                    
-                    io = obj;
-                    it = opts.Transfs(transf);
-                    ic = opts.Cameras(cam);
-                    id = opts.Days(day);
-                    
-                    figure( (it-1)*length(day_mapping)*length(camera_list)+(id-1)*length(camera_list)+ic )
-                    subplot(Nrows, Ncols, cc)
+                for idxt=1:length(transf_list)
+                    for idxd=1:length(day_mapping)
+                        for idxe=1:length(camera_list)
+                                 
+                            it = opts.Transfs(transf_names{transf_list(idxt)});
+                            ie = opts.Cameras(camera_names{camera_list(idxe)});
+                            id = opts.Days(day_names{day_mapping(idxd)});
+                                 
+                            OO = [CC(:, it, id ,ie)];
+                            
+                            figure( (idxt-1)*length(day_mapping)*length(camera_list)+(idxd-1)*length(camera_list)+idxe )
+                            hh = subplot(Nrows, Ncols, cc)
                         
-                    maxW = 1;
-                    for oo=1:NobjPerCat
-                        W = length(CC{io, it, id, ic});
-                        if W>maxW
-                            maxW = W;
+                            maxW = 1;
+                            for oo=obj_list
+                                W = length(OO{oo});
+                                if W>maxW
+                                    maxW = W;
+                                end
+                            end
+                    
+                            AA = -ones(length(obj_list), maxW);
+                            for oo=1:length(obj_list)
+                                AA(oo, 1:length(OO{oo})) = OO{oo};
+                            end
+                            
+                            imagesc(AA)
+                            title(cat_names{cat_idx(cc)})
+                            if max(max(AA))==0
+                                colormap(hh, [1 0 0; 0 0 0]);
+                            else
+                                colormap(hh, [1 0 0; 0 0 0; 1 1 1]);
+                            end
+                            
+                            %ylim([0.5 length(obj_list)+0.5]);
+                            set(gca, 'YTick', 1:length(obj_list));
+                            set(gca, 'YTickLabels', cellstr(num2str(obj_list(:)))');
+                            
+                            ax=get(hh,'Position');
+                            if cc==1
+                                axh = ax(4);
+                            else
+                                ax(4) = axh;
+                                set(hh,'Position', ax);
+                            end
+
+                            suptitle([experiment ' ' mapping ' ' transf_names{transf_list(idxt)} ' ' day_names{day_mapping(idxd)} ' ' camera_names{camera_list(idxe)}])
+                            
+                            figname = [set_names_prefix{sidx} strrep(strrep(num2str(obj_lists{sidx}), '   ', '-'), '  ', '-')];
+                            figname = [figname '_tr_' num2str(transf_list(idxt))];
+                            figname = [figname '_cam_' num2str(camera_list(idxe))];
+                            figname = [figname '_day_' num2str(day_mapping(idxd))];
+                            
+                            saveas(gcf, fullfile(output_dir, 'figs', [figname '.fig']));
+                            
                         end
                     end
-                    
-                    
-                    = Ypred_01{opts.Cat(cat_names{cc})}{io, it, ic, id};
-                    = accuracy{opts.Cat(cat_names{cc})}(io, it, ic, id);
-                    = Ypred_mode{opts.Cat(cat_names{cc})}(io, it, ic, id);
-                
-                    
-                    
-                    
-                    
-                    
-                    
-                    AA = -ones(NobjPerCat, maxW);
-                    for oo=1:NobjPerCat
-                        AA(oo, 1:length(CC{oo, opts.Transfs(cell2mat(ct)), chooseday, choosecam})) = CC{oo, opts.Transfs(cell2mat(ct)), chooseday, choosecam};
-                    end
-                    
-                    imagesc(AA)
-                    title(cat_names( cell2mat(values(opts.Cat))==cc))
-                    if max(max(AA))==0
-                        colormap(hh, [1 0 0; 0 0 0]);
-                    else
-                        colormap(hh, [1 0 0; 0 0 0; 1 1 1]);
-                    end
-                    
-                    suptitle([mapping ' ' cell2mat(ct) ' ' num2str(chooseday) ' ' num2str(choosecam)])
-                    saveas(gcf, fullfile(output_dir, 'figs', [mapping '_' cell2mat(ct) '_' num2str(chooseday) '_' num2str(choosecam) '.fig']));
-                    
-                
-                            
-                            
-                    
-                    
-                
-                
-                % Ypred_mode
-                figure(2)
-                % accuracy
-                figure(3)
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
+                end
             end
+            
         end
     end
-    
+end
+
+
+  
     %scores = cell(Ncat,1);
     scoresavg = cell(Ncat, 1);
     trueclass = cell(Ncat,1);

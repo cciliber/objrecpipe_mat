@@ -3,8 +3,8 @@
 FEATURES_DIR = '/Users/giulia/REPOS/objrecpipe_mat';
 addpath(genpath(FEATURES_DIR));
 
-%DATA_DIR = '/Volumes/MyPassport';
-DATA_DIR = '/data/giulia/ICUBWORLD_ULTIMATE';
+DATA_DIR = '/Volumes/MyPassport';
+%DATA_DIR = '/data/giulia/ICUBWORLD_ULTIMATE';
 
 %% Dataset info
 
@@ -25,6 +25,17 @@ NobjPerCat = opts.ObjPerCat;
 Ntransfs = opts.Transfs.Count;
 Ndays = opts.Days.Count;
 Ncameras = opts.Cameras.Count;
+
+%% Whether to create the full-path registries (e.g. for DIGITS)
+
+create_fullpath = true;
+
+if create_fullpath
+    %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid384_disp_finaltree');
+    %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb60_disp_finaltree');
+    dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid256_disp_finaltree');
+    %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb30_disp_finaltree');
+end
 
 %% Set up the esperiments
 
@@ -49,9 +60,10 @@ end
 % Choose categories
 
 cat_idx_all = { [9 13], ...
-    [8 9 13 14 15], ...
-    [3 8 9 11 12 13 14 15 19 20], ...
-    [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20] };
+    [8 9 13 14 15]%, ...
+    %[3 8 9 11 12 13 14 15 19 20], ...
+    %[2 3 4 5 6 7 8 9 11 12 13 14 15 19 20]
+    };
 
 % Choose objects per category
 
@@ -124,17 +136,6 @@ output_dir_regtxt_root = fullfile(DATA_DIR, 'iCubWorldUltimate_registries', expe
 
 if create_fullpath
     output_dir_regtxt_root_fullpath = fullfile([dset_dir '_experiments'], 'registries', experiment);              
-end
-
-%% Whether to create the full-path registries (e.g. for DIGITS)
-
-create_fullpath = true;
-
-if create_fullpath
-    dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid384_disp_finaltree');
-    %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb60_disp_finaltree');
-    %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid256_disp_finaltree');
-    %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb30_disp_finaltree');
 end
 
 %% For each experiment, go!

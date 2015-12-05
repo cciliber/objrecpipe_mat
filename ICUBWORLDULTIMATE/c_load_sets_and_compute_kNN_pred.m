@@ -3,8 +3,8 @@
 FEATURES_DIR = '/data/giulia/REPOS/objrecpipe_mat';
 addpath(genpath(FEATURES_DIR));
 
-%DATA_DIR = '/Volumes/MyPassport';
-DATA_DIR = '/data/giulia/ICUBWORLD_ULTIMATE';
+DATA_DIR = '/Volumes/MyPassport';
+%DATA_DIR = '/data/giulia/ICUBWORLD_ULTIMATE';
 
 %% Dataset info
 
@@ -49,9 +49,10 @@ end
 % Choose categories
 
 cat_idx_all = { [9 13], ...
-    [8 9 13 14 15], ...
-    [3 8 9 11 12 13 14 15 19 20], ...
-    [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20] };
+    [8 9 13 14 15]%, ...
+    %[3 8 9 11 12 13 14 15 19 20], ...
+    %[2 3 4 5 6 7 8 9 11 12 13 14 15 19 20] 
+    };
 
 % Choose objects per category
 
@@ -96,15 +97,15 @@ camera_lists = {1, 1, 1};
 
 % Location of the scores
 
-dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid384_disp_finaltree');
+%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid384_disp_finaltree');
 %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb60_disp_finaltree');
-%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid256_disp_finaltree');
+dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid256_disp_finaltree');
 %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb30_disp_finaltree');
 
 exp_dir = fullfile([dset_dir '_experiments'], 'test_offtheshelfnets');
 
-model = 'googlenet';
-%model = 'bvlc_reference_caffenet';
+%model = 'googlenet';
+model = 'bvlc_reference_caffenet';
 %model = 'vgg';
 
 input_dir = fullfile(exp_dir, 'scores', model);
