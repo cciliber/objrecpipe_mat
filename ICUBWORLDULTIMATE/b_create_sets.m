@@ -1,10 +1,13 @@
 %% Setup
 
-FEATURES_DIR = '/Users/giulia/REPOS/objrecpipe_mat';
+%FEATURES_DIR = '/Users/giulia/REPOS/objrecpipe_mat';
+%FEATURES_DIR = '/home/giulia/REPOS/objrecpipe_mat';
+FEATURES_DIR = '/data/giulia/REPOS/objrecpipe_mat';
 addpath(genpath(FEATURES_DIR));
 
-DATA_DIR = '/Volumes/MyPassport';
-%DATA_DIR = '/data/giulia/ICUBWORLD_ULTIMATE';
+%DATA_DIR = '/media/giulia/MyPassport';
+%DATA_DIR = '/Volumes/MyPassport';
+DATA_DIR = '/data/giulia/ICUBWORLD_ULTIMATE';
 
 %% Dataset info
 
@@ -31,9 +34,9 @@ Ncameras = opts.Cameras.Count;
 create_fullpath = true;
 
 if create_fullpath
-    %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid384_disp_finaltree');
+    dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid384_disp_finaltree');
     %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb60_disp_finaltree');
-    dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid256_disp_finaltree');
+    %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid256_disp_finaltree');
     %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb30_disp_finaltree');
 end
 
@@ -41,7 +44,8 @@ end
 
 % Default sets that are created
 
-set_names_prefix = {'train_', 'val_', 'test_'};
+%set_names_prefix = {'train_', 'val_', 'test_'};
+set_names_prefix = {'test_'};
 Nsets = length(set_names_prefix);
 
 % Experiment kind
@@ -60,19 +64,19 @@ end
 % Choose categories
 
 cat_idx_all = { [9 13], ...
-    [8 9 13 14 15]%, ...
-    %[3 8 9 11 12 13 14 15 19 20], ...
-    %[2 3 4 5 6 7 8 9 11 12 13 14 15 19 20]
-    };
+    [8 9 13 14 15], ...
+    [3 8 9 11 12 13 14 15 19 20], ...
+    [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20]};
 
 % Choose objects per category
 
 if strcmp(experiment, 'categorization')
     
-    obj_lists_all = { %{1:4, 5:7, 8:10}, ...
-        %{1, 5, [2 3 4 6 7 8 9 10]}, ...
-        %{1:6, 7, 8:10}, ...
-        {[1:6 8 9], 7, 10}};
+    obj_lists_all = { {1, 5, [2 3 4 6 7 8 9 10]}, ...
+        {1:2, 5, [3 4 6 7 8 9 10]}, ...
+        {1:4, 5:7, 8:10}, ...
+        {[1:4 6 7], 5, 8:10}, ...
+        {[1:4 6:9], 5, 10}};
     
 elseif strcmp(experiment, 'identification')
     
@@ -201,7 +205,7 @@ for icat=1:length(cat_idx_all)
         
         % Create the registries REG and the labels Yimnet (ImageNet labels), Y
         
-        for sidx=1:length(set_names)
+        for sidx=1:Nsets
             
             set_name = set_names{sidx};
             

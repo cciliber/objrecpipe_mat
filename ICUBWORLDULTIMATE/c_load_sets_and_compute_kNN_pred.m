@@ -1,11 +1,13 @@
 %% Setup
 
-FEATURES_DIR = '/home/giulia/REPOS/objrecpipe_mat';
+%FEATURES_DIR = '/Users/giulia/REPOS/objrecpipe_mat';
+%FEATURES_DIR = '/home/giulia/REPOS/objrecpipe_mat';
+FEATURES_DIR = '/data/giulia/REPOS/objrecpipe_mat';
 addpath(genpath(FEATURES_DIR));
 
-DATA_DIR = '/media/giulia/MyPassport';
+%DATA_DIR = '/media/giulia/MyPassport';
 %DATA_DIR = '/Volumes/MyPassport';
-%DATA_DIR = '/data/giulia/ICUBWORLD_ULTIMATE';
+DATA_DIR = '/data/giulia/ICUBWORLD_ULTIMATE';
 
 %% Dataset info
 
@@ -50,19 +52,19 @@ end
 % Choose categories
 
 cat_idx_all = { [9 13], ...
-    [8 9 13 14 15]%, ...
-    %[3 8 9 11 12 13 14 15 19 20], ...
-    %[2 3 4 5 6 7 8 9 11 12 13 14 15 19 20] 
-    };
+    [8 9 13 14 15], ...
+    [3 8 9 11 12 13 14 15 19 20], ...
+    [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20]};
 
 % Choose objects per category
 
 if strcmp(experiment, 'categorization')
     
-    obj_lists_all = { %{1:4, 5:7, 8:10}, ...
-        %{1, 5, [2 3 4 6 7 8 9 10]}, ...
-        %{1:6, 7, 8:10}, ...
-        {[1:6 8 9], 7, 10}};
+    obj_lists_all = { {1, 5, [2 3 4 6 7 8 9 10]}, ...
+        {1:2, 5, [3 4 6 7 8 9 10]}, ...
+        {1:4, 5:7, 8:10}, ...
+        {[1:4 6 7], 5, 8:10}, ...
+        {[1:4 6:9], 5, 10}};
     
 elseif strcmp(experiment, 'identification')
     
@@ -78,9 +80,9 @@ end
 
 %transf_lists = {1:Ntransfs, 1:Ntransfs, 1:Ntransfs};
 %transf_lists = {[2 3], [2 3], [2 3]};
-transf_lists = {2, 2, 2};
+transf_lists = {2, 2, 1:Ntransfs};
 
-day_mappings = {1, 1, 1};
+day_mappings = {1, 1, 1:2};
 day_lists = cell(Nsets,1);
 tmp = keys(opts.Days);
 for ii=1:Nsets
@@ -92,21 +94,21 @@ for ii=1:Nsets
 end
 
 %camera_lists = {[1 2], [1 2], [1 2]};
-camera_lists = {1, 1, 1};
+camera_lists = {1, 1, 1:2};
 
 %% Set the IO root directories
 
 % Location of the scores
 
-%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid384_disp_finaltree');
+dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid384_disp_finaltree');
 %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb60_disp_finaltree');
-dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid256_disp_finaltree');
+%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid256_disp_finaltree');
 %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb30_disp_finaltree');
 
 exp_dir = fullfile([dset_dir '_experiments'], 'test_offtheshelfnets');
 
-%model = 'googlenet';
-model = 'bvlc_reference_caffenet';
+model = 'googlenet';
+%model = 'bvlc_reference_caffenet';
 %model = 'vgg';
 
 input_dir = fullfile(exp_dir, 'scores', model);
