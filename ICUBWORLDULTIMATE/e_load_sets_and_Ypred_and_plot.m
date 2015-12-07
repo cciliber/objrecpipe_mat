@@ -1,9 +1,10 @@
 %% Setup
 
-FEATURES_DIR = '/data/giulia/REPOS/objrecpipe_mat';
+FEATURES_DIR = '/home/giulia/REPOS/objrecpipe_mat';
 addpath(genpath(FEATURES_DIR));
 
-DATA_DIR = '/Volumes/MyPassport';
+%DATA_DIR = '/Volumes/MyPassport';
+DATA_DIR = '/media/giulia/MyPassport';
 %DATA_DIR = '/data/giulia/ICUBWORLD_ULTIMATE';
 
 %% Dataset info
@@ -41,8 +42,8 @@ experiment = 'categorization';
 
 % Mapping 
 
-%mapping = 'NN';
-mapping = 'none';
+mapping = 'NN';
+%mapping = 'none';
 
 % Whether to use the ImageNet labels
 
@@ -178,18 +179,18 @@ for icat=1:length(cat_idx_all)
                 if strcmp(mapping, 'none')
                     load(fullfile(input_dir, ['Yimnet_none_' set_name '.mat']), 'Ypred', 'acc');
                 elseif strcmp(mapping, 'NN')
-                    load(fullfile(input_dir, ['Yimnet_none_' set_name '.mat']), 'Ypred', 'acc_crossval', 'Kvalues')
-                    acc_global(icat, iobj) = acc_crossval(3,(acc_crossval(3,:)~=-1));
-                    K(icat, iobj) = Kvalues(acc_crossval(3,:)~=-1);
+                    load(fullfile(input_dir, ['Yimnet_NN_' set_name '.mat']), 'Ypred', 'acc', 'Kvalues')
+                    acc_global(icat, iobj) = acc(3,(acc(3,:)~=-1));
+                    K(icat, iobj) = Kvalues(acc(3,:)~=-1);
                 end;
             else
                 load(fullfile(input_dir_regtxt, ['Y_' set_name '.mat']), 'Y');
                  if strcmp(mapping, 'none')
                     load(fullfile(input_dir, ['Y_none' set_name '.mat']), 'Ypred', 'acc');
                  elseif strcmp(mapping, 'NN')
-                     load(fullfile(input_dir, ['Y_none' set_name '.mat']), 'Ypred', 'acc_crossval', 'Kvalues');
-                     acc_global(icat, iobj) = acc_crossval(3,(acc_crossval(3,:)~=-1));
-                     K(icat, iobj) = Kvalues(acc_crossval(3,:)~=-1);
+                     load(fullfile(input_dir, ['Y_NN' set_name '.mat']), 'Ypred', 'acc', 'Kvalues');
+                     acc_global(icat, iobj) = acc(3,(acc(3,:)~=-1));
+                     K(icat, iobj) = Kvalues(acc(3,:)~=-1);
                  end
             end
             
@@ -257,56 +258,57 @@ for icat=1:length(cat_idx_all)
             Ncols = min(Nplots, 5);
             Nrows = ceil(Nplots/Ncols);
             
-            for cc=1:Nplots
-
-                CC = Ypred_01{opts.Cat(cat_names{cat_idx(cc)})};
-                   
-                for idxt=1:length(transf_list)
+            for idxt=1:length(transf_list)
                     for idxd=1:length(day_mapping)
                         for idxe=1:length(camera_list)
-                                 
+                            
                             it = opts.Transfs(transf_names{transf_list(idxt)});
                             ie = opts.Cameras(camera_names{camera_list(idxe)});
                             id = opts.Days(day_names{day_mapping(idxd)});
-                                 
-                            OO = [CC(:, it, id ,ie)];
                             
                             figure( (idxt-1)*length(day_mapping)*length(camera_list)+(idxd-1)*length(camera_list)+idxe )
-                            hh = subplot(Nrows, Ncols, cc)
-                        
-                            maxW = 1;
-                            for oo=obj_list
-                                W = length(OO{oo});
-                                if W>maxW
-                                    maxW = W;
+                            
+                            for cc=1:Nplots
+  
+                                OO = [Ypred_01{opts.Cat(cat_names{cat_idx(cc)})}(:, it, id ,ie)];
+                                hh = subplot(Nrows, Ncols, cc)
+                                
+                                maxW = 1;
+                                for oo=obj_list
+                                    W = length(OO{oo});
+                                    if W>maxW
+                                        maxW = W;
+                                    end
+                                end
+                                
+                                AA = -ones(length(obj_list), maxW);
+                                for oo=1:length(obj_list)
+                                    AA(oo, 1:length(OO{obj_list(oo)})) = OO{obj_list(oo)};
+                                end
+                                
+                                imagesc(AA)
+                                title(cat_names{cat_idx(cc)})
+                                if max(max(AA))==0
+                                    colormap(hh, [1 0 0; 0 0 0]);
+                                elseif min(min(AA))==0
+                                    colormap(hh, [0 0 0; 1 1 1]);
+                                else
+                                     colormap(hh, [1 0 0; 0 0 0; 1 1 1]);
+                                end
+                                
+                                %ylim([0.5 length(obj_list)+0.5]);
+                                set(gca, 'YTick', 1:length(obj_list));
+                                set(gca, 'YTickLabels', cellstr(num2str(obj_list(:)))');
+                                
+                                ax=get(hh,'Position');
+                                if cc==1
+                                    axh = ax(4);
+                                else
+                                    ax(4) = axh;
+                                    set(hh,'Position', ax);
                                 end
                             end
-                    
-                            AA = -ones(length(obj_list), maxW);
-                            for oo=1:length(obj_list)
-                                AA(oo, 1:length(OO{oo})) = OO{oo};
-                            end
                             
-                            imagesc(AA)
-                            title(cat_names{cat_idx(cc)})
-                            if max(max(AA))==0
-                                colormap(hh, [1 0 0; 0 0 0]);
-                            else
-                                colormap(hh, [1 0 0; 0 0 0; 1 1 1]);
-                            end
-                            
-                            %ylim([0.5 length(obj_list)+0.5]);
-                            set(gca, 'YTick', 1:length(obj_list));
-                            set(gca, 'YTickLabels', cellstr(num2str(obj_list(:)))');
-                            
-                            ax=get(hh,'Position');
-                            if cc==1
-                                axh = ax(4);
-                            else
-                                ax(4) = axh;
-                                set(hh,'Position', ax);
-                            end
-
                             suptitle([experiment ' ' mapping ' ' transf_names{transf_list(idxt)} ' ' day_names{day_mapping(idxd)} ' ' camera_names{camera_list(idxe)}])
                             
                             figname = [set_names_prefix{sidx} strrep(strrep(num2str(obj_lists{sidx}), '   ', '-'), '  ', '-')];
@@ -315,8 +317,6 @@ for icat=1:length(cat_idx_all)
                             figname = [figname '_day_' num2str(day_mapping(idxd))];
                             
                             saveas(gcf, fullfile(output_dir, 'figs', [figname '.fig']));
-                            
-                        end
                     end
                 end
             end
@@ -325,7 +325,7 @@ for icat=1:length(cat_idx_all)
     end
 end
 
-
+close all
   
     %scores = cell(Ncat,1);
     scoresavg = cell(Ncat, 1);

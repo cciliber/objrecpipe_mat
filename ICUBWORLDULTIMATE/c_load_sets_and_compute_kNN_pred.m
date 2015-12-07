@@ -1,9 +1,10 @@
 %% Setup
 
-FEATURES_DIR = '/data/giulia/REPOS/objrecpipe_mat';
+FEATURES_DIR = '/home/giulia/REPOS/objrecpipe_mat';
 addpath(genpath(FEATURES_DIR));
 
-DATA_DIR = '/Volumes/MyPassport';
+DATA_DIR = '/media/giulia/MyPassport';
+%DATA_DIR = '/Volumes/MyPassport';
 %DATA_DIR = '/data/giulia/ICUBWORLD_ULTIMATE';
 
 %% Dataset info
@@ -483,7 +484,9 @@ for icat=1:length(cat_idx_all)
         
         %% Store results
         
-        Ypred = mat2cell(Ypred, cell2mat(NframesPerCat));
+        prova = cell(length(NframesPerCat),1);
+        prova(~cellfun(@isempty, NframesPerCat)) = mat2cell(Ypred, cell2mat(NframesPerCat));
+        Ypred = prova;
         if use_imnetlabels
             save(fullfile(output_dir_regtxt, ['Yimnet_NN_' set_names{3} '.mat']), 'Ypred', 'Kvalues', 'acc', '-v7.3');
         else
