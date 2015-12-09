@@ -41,12 +41,30 @@ Nsets = length(set_names_prefix);
 experiment = 'categorization';
 %experiment = 'identification';
 
-% Whether to use the ImageNet labels
+% Mapping (used only to name the resulting predictions)
 
-if strcmp(experiment, 'categorization')
-    use_imnetlabels = true;
+mapping = 'NN';
+
+% Whether to use the imnet or the tuning labels 
+
+if strcmp(experiment, 'categorization') 
+    use_imnetlabels = false;
+    %use_imnetlabels = true;
+elseif strcmp(experiment, 'identification')
+    use_imnetlabels = false;
 else
     use_imnetlabels = [];
+end
+
+% Whether to use the fine-tuning labels
+
+if strcmp(experiment, 'categorization') 
+    %use_tuninglabels = false;
+    use_tuninglabels = true;
+elseif strcmp(experiment, 'identification')
+    use_tuninglabels = true;
+else
+    use_tuninglabels = [];
 end
 
 % Choose categories
@@ -169,7 +187,12 @@ for icat=1:length(cat_idx_all)
         XX = cell(2, 1);
         XX2 = cell(2, 1);
         
-        YY = cell(3, 1);
+        if use_tuninglabels
+            YYtuning = cell(3, 1);
+        end
+        if use_imnetlabels
+            YYimnet = cell(3, 1);
+        end
         
         N = zeros(3, 1);
         NframesPerCat = cell(3, 1);
@@ -181,11 +204,14 @@ for icat=1:length(cat_idx_all)
             % load Y
             if use_imnetlabels
                 load(fullfile(input_dir_regtxt, ['Yimnet_' set_name '.mat']));
-            else
-                load(fullfile(input_dir_regtxt, ['Y_' set_name '.mat']));
+                YYimnet{sidx} = cell2mat(Y);
+                clear Y
             end
-            YY{sidx} = cell2mat(Y);
-            clear Y
+            if use_tuninglabels
+                load(fullfile(input_dir_regtxt, ['Y_' set_name '.mat']));
+                YYtuning{sidx} = cell2mat(Y);
+                clear Y
+            end
             
             % load scores and create X
             load(fullfile(input_dir_regtxt, ['REG_' set_name '.mat']));
@@ -265,7 +291,12 @@ for icat=1:length(cat_idx_all)
         
         for k=1:length(Kvalues)
             
-            Ypred = zeros(N(2), 1);
+            if use_imnetlabels
+            Ypred_imnet = zeros(N(2), 1);
+            end
+            if use_tuninglabels
+                Ypred_tuning = zeros(N(2), 1);
+            end
             
             Kcurrent = min(Kvalues(k), N(1));
             
@@ -275,15 +306,30 @@ for icat=1:length(cat_idx_all)
                 end_idx = min(bidx*batch_size, N(2));
                 
                 if Kcurrent==1
-                    Ypred(start_idx:end_idx) = mode(YY{1}( m.I(1:Kcurrent, start_idx:end_idx) )',1)';
+                    if use_imnetlabels
+                         Ypred_imnet(start_idx:end_idx) = mode(YYimnet{1}( m.I(1:Kcurrent, start_idx:end_idx) )',1)';
+                    end
+                    if use_tuninglabels
+                        Ypred_tuning(start_idx:end_idx) = mode(YYtuning{1}( m.I(1:Kcurrent, start_idx:end_idx) )',1)';
+                    end
                 else
-                    Ypred(start_idx:end_idx) = mode(YY{1}( m.I(1:Kcurrent, start_idx:end_idx) ),1)';
+                    if use_imnetlabels
+                        Ypred_imnet(start_idx:end_idx) = mode(YYimnet{1}( m.I(1:Kcurrent, start_idx:end_idx) ),1)';
+                    end
+                    if use_tuninglabels
+                        Ypred_tuning(start_idx:end_idx) = mode(YYtuning{1}( m.I(1:Kcurrent, start_idx:end_idx) ),1)';
+                    end               
                 end
                 
             end
             
             % store the accuracy for current K
-            acc(2, k) = compute_accuracy(Ypred, YY{2}, 'gurls');
+            if use_imnetlabels
+                acc(2, k) = compute_accuracy(Ypred_imnet, YYimnet{2}, 'gurls');
+            end
+            if use_tuninglabels
+                acc(2, k) = compute_accuracy(Ypred_tuning, YYtuning{2}, 'gurls');
+            end
             
         end
         
@@ -337,7 +383,12 @@ for icat=1:length(cat_idx_all)
         
         for k=1:length(Kvalues)
             
-            Ypred = zeros(N(1), 1);
+            if use_imnetlabels
+            Ypred_imnet = zeros(N(1), 1);
+            end
+            if use_tuninglabels
+                Ypred_tuning = zeros(N(1), 1);
+            end
             
             Kcurrent = min(k, N(1));
             
@@ -347,16 +398,31 @@ for icat=1:length(cat_idx_all)
                 end_idx = min(bidx*batch_size, N(1));
                 
                 if Kcurrent==1
-                    Ypred(start_idx:end_idx) = mode(YY{1}( m.I(1:Kcurrent, start_idx:end_idx) )',1)';
+                    if use_imnetlabels
+                        Ypred_imnet(start_idx:end_idx) = mode(YYimnet{1}( m.I(1:Kcurrent, start_idx:end_idx) )',1)';
+                    end
+                    if use_tuninglabels
+                        Ypred_tuning(start_idx:end_idx) = mode(YYtuning{1}( m.I(1:Kcurrent, start_idx:end_idx) )',1)';
+                    end
                 else
-                    Ypred(start_idx:end_idx) = mode(YY{1}( m.I(1:Kcurrent, start_idx:end_idx) ),1)';
+                    if use_imnetlabels
+                        Ypred_imnet(start_idx:end_idx) = mode(YYimnet{1}( m.I(1:Kcurrent, start_idx:end_idx) ),1)';
+                    end
+                    if use_tuninglabels
+                        Ypred_tuning(start_idx:end_idx) = mode(YYtuning{1}( m.I(1:Kcurrent, start_idx:end_idx) ),1)';
+                    end 
                 end
                 
             end
             
             % store the accuracy for current K
-            acc(1, k) = compute_accuracy(Ypred, YY{1}, 'gurls');
-            
+            if use_imnetlabels
+                acc(1, k) = compute_accuracy(Ypred_imnet, YYimnet{1}, 'gurls');
+            end
+            if use_tuninglabels
+                acc(1, k) = compute_accuracy(Ypred_tuning, YYtuning{1}, 'gurls');
+            end
+
         end
         
         % Remove intermediate I matrices if requested
@@ -376,11 +442,14 @@ for icat=1:length(cat_idx_all)
         % load Y
         if use_imnetlabels
             load(fullfile(input_dir_regtxt, ['Yimnet_' set_name '.mat']));
-        else
-            load(fullfile(input_dir_regtxt, ['Y_' set_name '.mat']));
+            YYimnet{3} = cell2mat(Y);
+            clear Y
         end
-        YY{3} = cell2mat(Y);
-        clear Y
+        if use_tuninglabels
+            load(fullfile(input_dir_regtxt, ['Y_' set_name '.mat']));
+            YYtuning{3} = cell2mat(Y);
+            clear Y
+        end
         
         % load scores and create X
         load(fullfile(input_dir_regtxt, ['REG_' set_name '.mat']));
@@ -455,7 +524,12 @@ for icat=1:length(cat_idx_all)
         %for k=1:length(Kvalues)
         for k=best_k_idx
             
-            Ypred = zeros(N(3), 1);
+            if use_imnetlabels
+            Ypred_imnet = zeros(N(3), 1);
+            end
+            if use_tuninglabels
+                Ypred_tuning = zeros(N(3), 1);
+            end
             
             Kcurrent = min(Kvalues(k), N(3));
             
@@ -465,15 +539,31 @@ for icat=1:length(cat_idx_all)
                 end_idx = min(bidx*batch_size, N(3));
                 
                 if Kcurrent==1
-                    Ypred(start_idx:end_idx) = mode(YY{1}( m.I(1:Kcurrent, start_idx:end_idx) )',1)';
+                    if use_imnetlabels
+                        Ypred_imnet(start_idx:end_idx) = mode(YYimnet{1}( m.I(1:Kcurrent, start_idx:end_idx) )',1)';
+                    end
+                    if use_tuninglabels
+                        Ypred_tuning(start_idx:end_idx) = mode(YYtuning{1}( m.I(1:Kcurrent, start_idx:end_idx) )',1)';
+                    end
                 else
-                    Ypred(start_idx:end_idx) = mode(YY{1}( m.I(1:Kcurrent, start_idx:end_idx) ),1)';
+                    if use_imnetlabels
+                        Ypred_imnet(start_idx:end_idx) = mode(YYimnet{1}( m.I(1:Kcurrent, start_idx:end_idx) ),1)';
+                    end
+                    if use_tuninglabels
+                        Ypred_tuning(start_idx:end_idx) = mode(YYtuning{1}( m.I(1:Kcurrent, start_idx:end_idx) ),1)';
+                    end
+                   
                 end
                 
             end
             
             % store the accuracy for current K
-            acc(3, k) = compute_accuracy(Ypred, YY{3}, 'gurls')
+            if use_imnetlabels
+                acc(3, k) = compute_accuracy(Ypred_imnet, YYimnet{3}, 'gurls')
+            end
+            if use_tuninglabels
+                acc(3, k) = compute_accuracy(Ypred_tuning, YYtuning{3}, 'gurls')
+            end
             Kvalues
             
         end
@@ -486,13 +576,17 @@ for icat=1:length(cat_idx_all)
         
         %% Store results
         
-        prova = cell(length(NframesPerCat),1);
-        prova(~cellfun(@isempty, NframesPerCat)) = mat2cell(Ypred, cell2mat(NframesPerCat));
-        Ypred = prova;
         if use_imnetlabels
-            save(fullfile(output_dir_regtxt, ['Yimnet_NN_' set_names{3} '.mat']), 'Ypred', 'Kvalues', 'acc', '-v7.3');
-        else
-            save(fullfile(output_dir_regtxt, ['Y_NN_' set_names{3} '.mat']), 'Ypred', 'Kvalues', 'acc', '-v7.3');
+            prova = cell(length(NframesPerCat),1);
+            prova(~cellfun(@isempty, NframesPerCat)) = mat2cell(Ypred_imnet, cell2mat(NframesPerCat));
+            Ypred = prova;
+           save(fullfile(output_dir_regtxt, ['Yimnet_' mapping '_' set_names{1} '_' set_names{2} '_' set_names{3} '.mat']), 'Ypred', 'Kvalues', 'acc', '-v7.3');
+        end
+        if use_tuninglabels 
+            prova = cell(length(NframesPerCat),1);
+            prova(~cellfun(@isempty, NframesPerCat)) = mat2cell(Ypred_tuning, cell2mat(NframesPerCat));
+            Ypred = prova;
+           save(fullfile(output_dir_regtxt, ['Y_' mapping '_' set_names{1} '_' set_names{2} '_' set_names{3} '.mat']), 'Ypred', 'Kvalues', 'acc', '-v7.3');
         end
         
     end

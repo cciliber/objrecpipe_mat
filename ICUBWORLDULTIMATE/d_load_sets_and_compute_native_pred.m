@@ -35,16 +35,32 @@ Ncameras = opts.Cameras.Count;
 
 set_names_prefix = {'train_', 'val_', 'test_'};
 Nsets = length(set_names_prefix);
+loaded_set = 3;
 
 % Experiment kind
 
 experiment = 'categorization';
 %experiment = 'identification';
 
-% Whether to use the ImageNet labels
+% Mapping (used only to name the resulting predictions)
 
 if strcmp(experiment, 'categorization')
+    %mapping = 'tuned';
+    mapping = 'none';
+elseif strcmp(experiment, 'identification')
+    mapping = 'tuned';
+else
+    mapping = [];
+end
+
+% Whether to use the imnet or the tuning labels
+
+if strcmp(experiment, 'categorization') && strcmp(mapping, 'none')
     use_imnetlabels = true;
+elseif strcmp(experiment, 'categorization') && strcmp(mapping, 'tuned')
+    use_imnetlabels = false;
+elseif strcmp(experiment, 'identification')
+    use_imnetlabels = false;
 else
     use_imnetlabels = [];
 end
@@ -158,53 +174,55 @@ for icat=1:length(cat_idx_all)
         
         %% Load Y and create X for train, val and test sets to compute native Ypred
         
-        for sidx=1:length(set_names)
+        % load Y
+        if use_imnetlabels
+            load(fullfile(input_dir_regtxt, ['Yimnet_' set_names{loaded_set} '.mat']));
+        else
+            load(fullfile(input_dir_regtxt, ['Y_' set_names{loaded_set} '.mat']));
+        end
+        
+        % load REG and create X
+        load(fullfile(input_dir_regtxt, ['REG_' set_names{loaded_set} '.mat']));
+        X = cell(Ncat, 1);
+        NframesPerCat = cell(Ncat, 1);
+        for cc=cat_idx
+            NframesPerCat{opts.Cat(cat_names{cc})} = length(REG{opts.Cat(cat_names{cc})});
+            X{opts.Cat(cat_names{cc})} = zeros(NframesPerCat{opts.Cat(cat_names{cc})}, 1000);
+            for ff=1:NframesPerCat{opts.Cat(cat_names{cc})}
+                fid = fopen(fullfile(input_dir, cat_names{cc}, [REG{opts.Cat(cat_names{cc})}{ff}(1:(end-4)) '.txt']));
+                X{opts.Cat(cat_names{cc})}(ff,:) = cell2mat(textscan(fid, '%f'))';
+                fclose(fid);
+            end
+        end
+        
+        % compute predictions
+        Ypred = cell(Ncat,1);
+        for cc=cat_idx
             
-            set_name = set_names{sidx};
+            Ypred{opts.Cat(cat_names{cc})} = zeros(NframesPerCat{opts.Cat(cat_names{cc})}, 1);
             
-            % load Y
-            if strcmp(experiment, 'categorization') && use_imnetlabels
-                load(fullfile(input_dir_regtxt, ['Yimnet_' set_name '.mat']));
-            else
-                load(fullfile(input_dir_regtxt, ['Y_' set_name '.mat']));
+            batch_size = min(max_batch_size, NframesPerCat{opts.Cat(cat_names{cc})});
+            Nbatches = ceil(NframesPerCat{opts.Cat(cat_names{cc})}/batch_size);
+            for bidx=1:Nbatches
+                [~, I] = max(X{opts.Cat(cat_names{cc})}(((bidx-1)*batch_size+1):min(bidx*batch_size, NframesPerCat{opts.Cat(cat_names{cc})}),:), [], 2);
+                Ypred{opts.Cat(cat_names{cc})}((((bidx-1)*batch_size+1):min(bidx*batch_size, NframesPerCat{opts.Cat(cat_names{cc})}))) = I-1;
             end
             
-            % load REG and create X
-            load(fullfile(input_dir_regtxt, ['REG_' set_name '.mat']));
-            X = cell(Ncat, 1);
-            NframesPerCat = cell(Ncat, 1);
-            for cc=cat_idx
-                NframesPerCat{opts.Cat(cat_names{cc})} = length(REG{opts.Cat(cat_names{cc})});
-                X{opts.Cat(cat_names{cc})} = zeros(NframesPerCat{opts.Cat(cat_names{cc})}, 1000);
-                for ff=1:NframesPerCat{opts.Cat(cat_names{cc})}
-                    fid = fopen(fullfile(input_dir, cat_names{cc}, [REG{opts.Cat(cat_names{cc})}{ff}(1:(end-4)) '.txt']));
-                    X{opts.Cat(cat_names{cc})}(ff,:) = cell2mat(textscan(fid, '%f'))';
-                    fclose(fid);
-                end
+        end
+        
+        acc = compute_accuracy(cell2mat(Y), cell2mat(Ypred), 'gurls');
+        if use_imnetlabels
+            if strcmp(mapping, 'tuned')
+                save(fullfile(output_dir_regtxt, ['Yimnet_' mapping '_' set_names{1} '_' set_names{2} '_' set_names{3} '.mat'] ), 'Ypred', 'acc', '-v7.3');
+            elseif strcmp(mapping, 'none')
+                save(fullfile(output_dir_regtxt, ['Yimnet_' mapping '_' set_names{loaded_set} '.mat'] ), 'Ypred', 'acc', '-v7.3');
             end
-            
-            % compute predictions
-            Ypred = cell(Ncat,1);
-            for cc=cat_idx
-                
-                Ypred{opts.Cat(cat_names{cc})} = zeros(NframesPerCat{opts.Cat(cat_names{cc})}, 1);
-                
-                batch_size = min(max_batch_size, NframesPerCat{opts.Cat(cat_names{cc})}); 
-                Nbatches = ceil(NframesPerCat{opts.Cat(cat_names{cc})}/batch_size);
-                for bidx=1:Nbatches
-                    [~, I] = max(X{opts.Cat(cat_names{cc})}(((bidx-1)*batch_size+1):min(bidx*batch_size, NframesPerCat{opts.Cat(cat_names{cc})}),:), [], 2);
-                    Ypred{opts.Cat(cat_names{cc})}((((bidx-1)*batch_size+1):min(bidx*batch_size, NframesPerCat{opts.Cat(cat_names{cc})}))) = I-1;
-                end
-
+        else
+            if strcmp(mapping, 'tuned')
+                save(fullfile(output_dir_regtxt, ['Y_' mapping '_' set_names{1} '_' set_names{2} '_' set_names{3} '.mat'] ), 'Ypred', 'acc', '-v7.3');
+            elseif strcmp(mapping, 'tuned')
+                save(fullfile(output_dir_regtxt, ['Y_' mapping '_' set_names{loaded_set} '.mat'] ), 'Ypred', 'acc', '-v7.3');
             end
-             
-            acc = compute_accuracy(cell2mat(Y), cell2mat(Ypred), 'gurls'); 
-            if use_imnetlabels
-                save(fullfile(output_dir_regtxt, ['Yimnet_none_' set_name '.mat'] ), 'Ypred', 'acc', '-v7.3');
-            else
-                save(fullfile(output_dir_regtxt, ['Y_none_' set_name '.mat'] ), 'Ypred', 'acc', '-v7.3');
-            end
-            
         end
         
     end
