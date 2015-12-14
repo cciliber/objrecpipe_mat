@@ -51,7 +51,7 @@ classdef GenericFeature < handle %matlab.mixin.Copyable %hgsetget
             
             if ~isempty(labelslist)
                 y_1 = create_y(object.Registry, labelslist, []);
-                [~, object.Y] = max(y_1, [], 2);
+                [~, object.Y] = max(y_1, [], 2)-1;
             end
             
             if ~isempty(out_registry_path)

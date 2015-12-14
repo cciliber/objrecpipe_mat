@@ -45,18 +45,18 @@ experiment = 'categorization';
 
 mapping = 'NN';
 
-% Whether to use the imnet or the tuning labels 
+% Whether to use the imnet labels 
 
 if strcmp(experiment, 'categorization') 
-    use_imnetlabels = false;
-    %use_imnetlabels = true;
+    use_imnetlabels = true;
+    %use_imnetlabels = false;
 elseif strcmp(experiment, 'identification')
     use_imnetlabels = false;
 else
     use_imnetlabels = [];
 end
 
-% Whether to use the fine-tuning labels
+% Whether to use the tuning labels
 
 if strcmp(experiment, 'categorization') 
     %use_tuninglabels = false;
@@ -580,7 +580,7 @@ for icat=1:length(cat_idx_all)
             prova = cell(length(NframesPerCat),1);
             prova(~cellfun(@isempty, NframesPerCat)) = mat2cell(Ypred_imnet, cell2mat(NframesPerCat));
             Ypred = prova;
-           save(fullfile(output_dir_regtxt, ['Yimnet_' mapping '_' set_names{1} '_' set_names{2} '_' set_names{3} '.mat']), 'Ypred', 'Kvalues', 'acc', '-v7.3');
+            save(fullfile(output_dir_regtxt, ['Yimnet_' mapping '_' set_names{1} '_' set_names{2} '_' set_names{3} '.mat']), 'Ypred', 'Kvalues', 'acc', '-v7.3');
         end
         if use_tuninglabels 
             prova = cell(length(NframesPerCat),1);

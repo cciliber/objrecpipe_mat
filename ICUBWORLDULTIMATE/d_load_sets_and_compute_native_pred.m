@@ -211,19 +211,13 @@ for icat=1:length(cat_idx_all)
         end
         
         acc = compute_accuracy(cell2mat(Y), cell2mat(Ypred), 'gurls');
-        if use_imnetlabels
-            if strcmp(mapping, 'tuned')
-                save(fullfile(output_dir_regtxt, ['Yimnet_' mapping '_' set_names{1} '_' set_names{2} '_' set_names{3} '.mat'] ), 'Ypred', 'acc', '-v7.3');
-            elseif strcmp(mapping, 'none')
-                save(fullfile(output_dir_regtxt, ['Yimnet_' mapping '_' set_names{loaded_set} '.mat'] ), 'Ypred', 'acc', '-v7.3');
-            end
-        else
-            if strcmp(mapping, 'tuned')
-                save(fullfile(output_dir_regtxt, ['Y_' mapping '_' set_names{1} '_' set_names{2} '_' set_names{3} '.mat'] ), 'Ypred', 'acc', '-v7.3');
-            elseif strcmp(mapping, 'tuned')
-                save(fullfile(output_dir_regtxt, ['Y_' mapping '_' set_names{loaded_set} '.mat'] ), 'Ypred', 'acc', '-v7.3');
-            end
+        
+        if strcmp(mapping, 'tuned')
+            save(fullfile(output_dir_regtxt, ['Y_' mapping '_' set_names{1} '_' set_names{2} '_' set_names{3} '.mat'] ), 'Ypred', 'acc', '-v7.3');
+        elseif strcmp(mapping, 'tuned')
+            save(fullfile(output_dir_regtxt, ['Y_' mapping '_' set_names{loaded_set}((length(set_names_prefix{loaded_set})+1):end) '.mat'] ), 'Ypred', 'acc', '-v7.3');
         end
+       
         
     end
     
