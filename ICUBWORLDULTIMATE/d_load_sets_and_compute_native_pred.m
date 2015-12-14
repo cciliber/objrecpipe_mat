@@ -128,7 +128,10 @@ model = 'googlenet';
 %model = 'bvlc_reference_caffenet';
 %model = 'vgg';
 
-input_dir = fullfile(exp_dir, 'scores', model);r
+input_dir = fullfile(exp_dir, 'scores', model);
+if strcmp(mapping, 'tuned')
+    input_dir = fullfile(input_dir, experiment);
+end
 check_input_dir(input_dir);
 
 output_dir = fullfile(exp_dir, 'predictions', model, experiment);
