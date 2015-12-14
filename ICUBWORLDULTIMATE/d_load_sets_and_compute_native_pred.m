@@ -45,8 +45,8 @@ experiment = 'categorization';
 % Mapping (used only to name the resulting predictions)
 
 if strcmp(experiment, 'categorization')
-    %mapping = 'tuned';
-    mapping = 'none';
+    mapping = 'tuned';
+    %mapping = 'none';
 elseif strcmp(experiment, 'identification')
     mapping = 'tuned';
 else
@@ -128,7 +128,7 @@ model = 'googlenet';
 %model = 'bvlc_reference_caffenet';
 %model = 'vgg';
 
-input_dir = fullfile(exp_dir, 'scores', model);
+input_dir = fullfile(exp_dir, 'scores', model);r
 check_input_dir(input_dir);
 
 output_dir = fullfile(exp_dir, 'predictions', model, experiment);
@@ -158,7 +158,7 @@ for icat=1:length(cat_idx_all)
             dir_regtxt_relative = fullfile(dir_regtxt_relative, strrep(strrep(num2str(obj_list), '   ', '-'), '  ', '-'));
         end
         
-        if strcmp(mapping, 'tuning')
+        if strcmp(mapping, 'tuned')
             input_dir = fullfile(input_dir, dir_regtxt_relative);
             check_input_dir(input_dir);
         end
