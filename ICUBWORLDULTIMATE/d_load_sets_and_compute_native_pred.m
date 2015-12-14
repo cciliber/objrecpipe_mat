@@ -234,7 +234,7 @@ for icat=1:length(cat_idx_all)
         
         if strcmp(mapping, 'tuned')
             save(fullfile(output_dir_regtxt, ['Y_' mapping '_' set_names{1} '_' set_names{2} '_' set_names{3} '.mat'] ), 'Ypred', 'acc', '-v7.3');
-        elseif strcmp(mapping, 'tuned')
+        elseif strcmp(mapping, 'none')
             save(fullfile(output_dir_regtxt, ['Y_' mapping '_' set_names{loaded_set}((length(set_names_prefix{loaded_set})+1):end) '.mat'] ), 'Ypred', 'acc', '-v7.3');
         end
        
