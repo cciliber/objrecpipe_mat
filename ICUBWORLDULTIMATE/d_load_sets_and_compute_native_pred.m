@@ -122,6 +122,7 @@ dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid384_disp_finaltree');
 %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb30_disp_finaltree');
 
 exp_dir = fullfile([dset_dir '_experiments'], 'test_offtheshelfnets');
+exp_dir = fullfile([dset_dir '_experiments'], 'tuning');
 
 model = 'googlenet';
 %model = 'bvlc_reference_caffenet';
@@ -155,6 +156,11 @@ for icat=1:length(cat_idx_all)
         dir_regtxt_relative = fullfile(['Ncat_' num2str(length(cat_idx))], strrep(strrep(num2str(cat_idx), '   ', '-'), '  ', '-'));
         if strcmp(experiment, 'identification')
             dir_regtxt_relative = fullfile(dir_regtxt_relative, strrep(strrep(num2str(obj_list), '   ', '-'), '  ', '-'));
+        end
+        
+        if strcmp(mapping, 'tuning')
+            input_dir = fullfile(input_dir, dir_regtxt_relative);
+            check_input_dir(input_dir);
         end
         
         input_dir_regtxt = fullfile(input_dir_regtxt_root, dir_regtxt_relative);
