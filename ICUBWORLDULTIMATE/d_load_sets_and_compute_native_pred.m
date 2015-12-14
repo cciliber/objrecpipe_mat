@@ -121,7 +121,7 @@ dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid384_disp_finaltree');
 %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid256_disp_finaltree');
 %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb30_disp_finaltree');
 
-exp_dir = fullfile([dset_dir '_experiments'], 'test_offtheshelfnets');
+%exp_dir = fullfile([dset_dir '_experiments'], 'test_offtheshelfnets');
 exp_dir = fullfile([dset_dir '_experiments'], 'tuning');
 
 model = 'googlenet';
