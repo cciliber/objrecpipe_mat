@@ -196,7 +196,14 @@ for icat=1:length(cat_idx_all)
         NframesPerCat = cell(Ncat, 1);
         for cc=cat_idx
             NframesPerCat{opts.Cat(cat_names{cc})} = length(REG{opts.Cat(cat_names{cc})});
-            X{opts.Cat(cat_names{cc})} = zeros(NframesPerCat{opts.Cat(cat_names{cc})}, 1000);
+            if strcmp(mapping, 'tuned') && strcmp(experiment, 'categorization')
+                score_length = length(cat_idx);
+            elseif strcmp(mapping, 'tuned') && strcmp(experiment, 'identification')
+                score_length = length(obj_lists{loaded_set});
+            elseif strcmp(mapping, 'none')
+                score_length = 1000;
+            end
+            X{opts.Cat(cat_names{cc})} = zeros(NframesPerCat{opts.Cat(cat_names{cc})}, score_length);
             for ff=1:NframesPerCat{opts.Cat(cat_names{cc})}
                 if strcmp(mapping, 'none')
                     fid = fopen(fullfile(input_dir, cat_names{cc}, [REG{opts.Cat(cat_names{cc})}{ff}(1:(end-4)) '.txt']));
