@@ -44,8 +44,7 @@ end
 
 % Default sets that are created
 
-%set_names_prefix = {'train_', 'val_', 'test_'};
-set_names_prefix = {'test_'};
+set_names_prefix = {'train_', 'val_', 'test_'};
 Nsets = length(set_names_prefix);
 
 % Experiment kind
@@ -65,18 +64,17 @@ end
 
 cat_idx_all = { [9 13], ...
     [8 9 13 14 15], ...
-    [3 8 9 11 12 13 14 15 19 20], ...
-    [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20]};
+    [3 8 9 11 12 13 14 15 19 20]};
+    %[2 3 4 5 6 7 8 9 11 12 13 14 15 19 20]};
 
 % Choose objects per category
 
 if strcmp(experiment, 'categorization')
     
-    obj_lists_all = { {1, 5, [2 3 4 6 7 8 9 10]}, ...
-        {1:2, 5, [3 4 6 7 8 9 10]}, ...
-        {1:4, 5:7, 8:10}, ...
-        {[1:4 6 7], 5, 8:10}, ...
-        {[1:4 6:9], 5, 10}};
+    obj_lists_all = { {1, 5, 8:10}, ...
+        {1:2, 5, 8:10}, ...
+        {1:4, 5, 8:10}, ...
+        {[1:4 6 7], 5, 8:10}};
     
 elseif strcmp(experiment, 'identification')
     
@@ -92,9 +90,9 @@ end
 
 %transf_lists = {1:Ntransfs, 1:Ntransfs, 1:Ntransfs};
 %transf_lists = {[2 3], [2 3], [2 3]};
-transf_lists = {2, 2, 2};
+transf_lists = {2, 2, 1:Ntransfs};
 
-day_mappings = {1, 1, 1};
+day_mappings = {1, 1, 1:2};
 day_lists = cell(Nsets,1);
 tmp = keys(opts.Days);
 for ii=1:Nsets
@@ -106,7 +104,7 @@ for ii=1:Nsets
 end
 
 %camera_lists = {[1 2], [1 2], [1 2]};
-camera_lists = {1, 1, 1};
+camera_lists = {1, 1, 1:2};
 
 % Choose validation percentage
 

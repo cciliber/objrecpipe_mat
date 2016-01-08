@@ -45,9 +45,10 @@ experiment = 'categorization';
 % Mapping
 
 if strcmp(experiment, 'categorization')
-    %mapping = 'tuned';
-    mapping = 'NN';
+    mapping = 'tuned';
+    %mapping = 'NN';
     %mapping = 'none';
+    %mapping = 'select';
 elseif strcmp(experiment, 'identification')
     %mapping = 'NN';
     mapping = 'tuned';
@@ -59,7 +60,10 @@ end
 
 if strcmp(mapping, 'NN')
     compute_avg = false;
-elseif strcmp(mapping, 'none')
+elseif strcmp(mapping, 'none') || strcmp(mapping, 'select')
+    %compute_avg = true;
+    compute_avg = false;
+elseif strcmp(mapping, 'tuned')
     %compute_avg = true;
     compute_avg = false;
 else
@@ -73,8 +77,8 @@ if strcmp(experiment, 'categorization') && strcmp(mapping, 'none')
 elseif strcmp(experiment, 'categorization') && strcmp(mapping, 'NN') 
     use_imnetlabels = false;
     %use_imnetlabels = true;
-elseif strcmp(experiment, 'categorization') && strcmp(mapping, 'tuned') 
-     use_imnetlabels = true;
+elseif strcmp(experiment, 'categorization') && (strcmp(mapping, 'tuned') || strcmp(mapping, 'select'))
+     use_imnetlabels = false;
 elseif strcmp(experiment, 'identification')
     use_imnetlabels = true;
 else
@@ -84,18 +88,23 @@ end
 % Choose categories
 
 cat_idx_all = { [9 13], ...
-    [8 9 13 14 15], ...
-    [3 8 9 11 12 13 14 15 19 20], ...
+    %[8 9 13 14 15], ...
+    %[3 8 9 11 12 13 14 15 19 20], ...
     [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20]};
 
 % Choose objects per category
 
 if strcmp(experiment, 'categorization')
     
+    %obj_lists_all = { {1, 5, 8:10}}; %, ...
+        %{1:2, 5, 8:10}, ...
+        %{1:4, 5, 8:10}, ...
+        %{[1:4 6 7], 5, 8:10}};
+        
     obj_lists_all = { {1, 5, [2 3 4 6 7 8 9 10]}, ...
-        {1:2, 5, [3 4 6 7 8 9 10]}, ...
-        {1:4, 5:7, 8:10}, ...
-        {[1:4 6 7], 5, 8:10}, ...
+        %{1:2, 5, [3 4 6 7 8 9 10]}, ...
+        %{1:4, 5:7, 8:10}, ...
+        %{[1:4 6 7], 5, 8:10}, ...
         {[1:4 6:9], 5, 10}};
     
 elseif strcmp(experiment, 'identification')
@@ -105,14 +114,14 @@ elseif strcmp(experiment, 'identification')
     for ii=1:length(id_exps)
         obj_lists_all{ii} = repmat(id_exps(ii), 1, Nsets);
     end
-    
+   
 end
 
 % Choose transformation, day, camera
 
-%transf_lists = {1:Ntransfs, 1:Ntransfs, 1:Ntransfs};
+transf_lists = {1:Ntransfs, 1:Ntransfs, 1:Ntransfs};
 %transf_lists = {[2 3], [2 3], [2 3]};
-transf_lists = {2, 2, 1:Ntransfs};
+%transf_lists = {2, 2, 1:Ntransfs};
 
 day_mappings = {1, 1, 1:2};
 day_lists = cell(Nsets,1);
@@ -137,7 +146,8 @@ dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid384_disp_finaltree');
 %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid256_disp_finaltree');
 %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb30_disp_finaltree');
 
-exp_dir = fullfile([dset_dir '_experiments'], 'test_offtheshelfnets');
+exp_dir = fullfile([dset_dir '_experiments'], 'tuning');
+%exp_dir = fullfile([dset_dir '_experiments'], 'test_offtheshelfnets');
 
 model = 'googlenet';
 %model = 'bvlc_reference_caffenet';
@@ -226,7 +236,9 @@ for icat=1:length(cat_idx_all)
                 acc_global(icat, iobj) = acc(3,(acc(3,:)~=-1));
                 K(icat, iobj) = Kvalues(acc(3,:)~=-1);
             elseif strcmp(mapping, 'tuned')
-                load(fullfile(input_dir, ['Y_tuned' set_names{1} '_' set_names{2} '_' set_names{3} '.mat']), 'Ypred', 'acc');
+                load(fullfile(input_dir, ['Y_tuned_' set_names{1} '_' set_names{2} '_' set_names{3} '.mat']), 'Ypred', 'acc');
+            elseif strcmp(mapping, 'select')
+                 load(fullfile(input_dir, ['Y_select_' set_names{loaded_set}((length(set_names_prefix{loaded_set})+1):end) '.mat']), 'Ypred', 'acc');
             end
         end
         
@@ -309,206 +321,206 @@ for icat=1:length(cat_idx_all)
 
         %% Ypred01
         
-%         Nplots = length(cat_idx);
-%         Ncols = min(Nplots, 5);
-%         Nrows = ceil(Nplots/Ncols);
-%         
-%         for idxt=1:length(transf_list)
-%             for idxd=1:length(day_mapping)
-%                 for idxe=1:length(camera_list)
-%                     
-%                     it = opts.Transfs(transf_names{transf_list(idxt)});
-%                     ie = opts.Cameras(camera_names{camera_list(idxe)});
-%                     id = opts.Days(day_names{day_mapping(idxd)});
-%                     
-%                     figure( (idxt-1)*length(day_mapping)*length(camera_list)+(idxd-1)*length(camera_list)+idxe )
-%                     scrsz = get(groot,'ScreenSize');
-%                     set(gcf, 'Position', [scrsz(3)/8 scrsz(4)/8 scrsz(3)*3/4 scrsz(4)*3/4]);
-%                     
-%                     for cc=1:Nplots
-%                         
-%                         OO = [Ypred_01{opts.Cat(cat_names{cat_idx(cc)})}(:, it, id ,ie)];
-%                         hh = subplot(Nrows, Ncols, cc);
-%                         
-%                         maxW = 1;
-%                         for oo=obj_list
-%                             W = length(OO{oo});
-%                             if W>maxW
-%                                 maxW = W;
-%                             end
-%                         end
-%                         
-%                         AA = -ones(length(obj_list), maxW);
-%                         for oo=1:length(obj_list)
-%                             AA(oo, 1:length(OO{obj_list(oo)})) = OO{obj_list(oo)};
-%                         end
-%                         
-%                         imagesc(AA)
-%                         title(cat_names{cat_idx(cc)})
-%                         cmapcomplete = [0 0 0; 1 0 0; 1 1 1]; % -1, 0, 1
-%                         AAvalues = unique(AA);
-%                         if length(AAvalues)<3
-%                             if max(AAvalues)==0
-%                                 cmapcomplete(3,:) = [];
-%                             end
-%                             if min(AAvalues)==0
-%                                 cmapcomplete(1,:) = [];
-%                             end
-%                             if ~sum(AAvalues==0)
-%                                 cmapcomplete(2,:) = [];
-%                             end
-%                         end
-%                         colormap(hh, cmapcomplete);
-%                             
-%                         %ylim([0.5 length(obj_list)+0.5]);
-%                         set(gca, 'YTick', 1:length(obj_list));
-%                         set(gca, 'YTickLabel', cellstr(num2str(obj_list(:)))');
-%                         
-%                     end
-%                     
-%                     stringtitle = {[experiment ', ' mapping ': tr ' transf_names{transf_list(idxt)} ', day ' num2str(day_mapping(idxd)) ', cam ' num2str(camera_list(idxe))]};
-%                     if ~strcmp(mapping, 'none')
-%                         stringtitle{end+1} = [set_names_4figs{1} ' - ' set_names_4figs{2}];
-%                     end
-%                     if strcmp(mapping, 'NN')
-%                         stringtitle{end} = [stringtitle{end} ' - K = ' num2str(K(icat, iobj))];
-%                     end
-%                     
-%                     suptitle(stringtitle);
-%                     
-%                     figname = ['Ypred01_' mapping '_'];
-%                     figname = [figname strrep(strrep(num2str(obj_lists{loaded_set}), '   ', '-'), '  ', '-')];
-%                     figname = [figname '_tr_' num2str(transf_list(idxt))];
-%                     figname = [figname '_day_' num2str(day_mapping(idxd))];
-%                     figname = [figname '_cam_' num2str(camera_list(idxe))];
-%                     if ~strcmp(mapping, 'none')
-%                         figname = [figname '_' set_names_prefix{loaded_set}];
-%                         figname = [figname set_names{1} '_' set_names{2}];
-%                     end
-%                     
-%                     saveas(gcf, fullfile(output_dir, 'figs/fig', [figname '.fig']));
-%                     set(gcf,'PaperPositionMode','auto')
-%                     print(fullfile(output_dir, 'figs/png', [figname '.png']),'-dpng','-r0')
-%                 end
-%             end
-%         end
-%         
-%         close all
-%         
-%         %% Ypred_4plots, Ytrue_4plots, Ypred_mode, Ypred_avg
-%         
-%         Nplots = length(cat_idx);
-%         Ncols = min(Nplots, 5);
-%         Nrows = ceil(Nplots/Ncols);
-%         
-%         for idxt=1:length(transf_list)
-%             for idxd=1:length(day_mapping)
-%                 for idxe=1:length(camera_list)
-%                     
-%                     it = opts.Transfs(transf_names{transf_list(idxt)});
-%                     ie = opts.Cameras(camera_names{camera_list(idxe)});
-%                     id = opts.Days(day_names{day_mapping(idxd)});
-%                     
-%                     figure( (idxt-1)*length(day_mapping)*length(camera_list)+(idxd-1)*length(camera_list)+idxe )
-%                     scrsz = get(groot,'ScreenSize');
-%                     set(gcf, 'Position', [scrsz(3)/8 scrsz(4)/8 scrsz(3)*3/4 scrsz(4)*3/4]);
-%                     
-%                     for cc=1:length(cat_idx)
-%                         
-%                         OO = [Ypred_4plots{opts.Cat(cat_names{cat_idx(cc)})}(:, it, id ,ie)];
-%                         
-%                         TT = Ytrue_4plots{opts.Cat(cat_names{cat_idx(cc)})}(:, it, id ,ie);
-%                         MODE = [Ypred_mode{opts.Cat(cat_names{cat_idx(cc)})}(:, it, id ,ie)];
-%                         if compute_avg
-%                             AVG = [Ypred_avg{opts.Cat(cat_names{cat_idx(cc)})}(:, it, id ,ie)];
-%                         end
-%                         
-%                         hh1 = subplot(Nrows, 2*Ncols, 2*cc-1);
-%                         
-%                         maxW = 1;
-%                         for oo=obj_list
-%                             W = length(OO{oo});
-%                             if W>maxW
-%                                 maxW = W;
-%                             end
-%                         end
-%                         
-%                         AA = -ones(length(obj_list), maxW);
-%                         for oo=1:length(obj_list)
-%                             AA(oo, 1:length(OO{obj_list(oo)})) = OO{obj_list(oo)};
-%                         end
-%                         
-%                         imagesc(AA, [-1 Nlbls-1])
-%                         title(cat_names{cat_idx(cc)})
-%                         cmap = colormap(hh1, [0 0 0; jet(double(Nlbls))]);                      
-%                         %ylim([0.5 length(obj_list)+0.5]);
-%                         set(gca, 'YTick', 1:length(obj_list));
-%                         set(gca, 'YTickLabel', cellstr(num2str(obj_list(:)))');
-%                         
-%                         hh2 = subplot(Nrows, 2*Ncols, 2*cc);
-%                         
-%                         if compute_avg 
-%                             AA = -ones(length(obj_list), 3);
-%                         else
-%                             AA = -ones(length(obj_list), 2);
-%                         end
-%                         for oo=1:length(obj_list)
-%                             AA(oo, 1) = TT(obj_list(oo));
-%                             AA(oo, 2) = MODE{obj_list(oo)};
-%                             if compute_avg
-%                                 AA(oo, 3) = AVG{obj_list(oo)};
-%                             end
-%                         end
-%                         
-%                         imagesc(AA, [0 Nlbls-1])
-%                         title(cat_names{cat_idx(cc)})
-%                         colormap(hh2, cmap(2:end, :));                      
-%                         %ylim([0.5 length(obj_list)+0.5]);
-%                         set(gca, 'YTick', 1:length(obj_list));
-%                         ax = get(gca, 'Position');
-%                         ax(3) = ax(3)/2;
-%                         set(gca, 'Position', ax);
-%                         set(gca, 'YTickLabel', cellstr(num2str(obj_list(:)))');
-%                         if compute_avg
-%                             set(gca, 'XTickLabel', {'true', 'mode', 'avg'});
-%                         else
-%                             set(gca, 'XTickLabel', {'true', 'mode'});
-%                         end
-%                         
-%                     end
-%                     
-%                     stringtitle = {[experiment ', ' mapping ': tr ' transf_names{transf_list(idxt)} ', day ' num2str(day_mapping(idxd)) ', cam ' num2str(camera_list(idxe))]};
-%                     if ~strcmp(mapping, 'none')
-%                         stringtitle{end+1} = [set_names_4figs{1} ' - ' set_names_4figs{2}];
-%                     end
-%                     if strcmp(mapping, 'NN')
-%                         stringtitle{end} = [stringtitle{end} ' - K = ' num2str(K(icat, iobj))];
-%                     end
-%                     
-%                     suptitle(stringtitle);
-%                    
-%                     if use_imnetlabels
-%                         figname = ['Ypredimnet_' mapping '_'];
-%                     else
-%                         figname = ['Ypred_' mapping '_'];
-%                     end
-%                     figname = [figname strrep(strrep(num2str(obj_lists{loaded_set}), '   ', '-'), '  ', '-')];
-%                     figname = [figname '_tr_' num2str(transf_list(idxt))];
-%                     figname = [figname '_day_' num2str(day_mapping(idxd))];
-%                     figname = [figname '_cam_' num2str(camera_list(idxe))];
-%                     if ~strcmp(mapping, 'none')
-%                         figname = [figname '_' set_names_prefix{loaded_set}];
-%                         figname = [figname set_names{1} '_' set_names{2}];
-%                     end
-%                     
-%                     saveas(gcf, fullfile(output_dir, 'figs/fig', [figname '.fig']));
-%                     set(gcf,'PaperPositionMode','auto')
-%                     print(fullfile(output_dir, 'figs/png', [figname '.png']),'-dpng','-r0')
-%                 end
-%             end
-%         end
-% 
-%         close all
+        Nplots = length(cat_idx);
+        Ncols = min(Nplots, 5);
+        Nrows = ceil(Nplots/Ncols);
+        
+        for idxt=1:length(transf_list)
+            for idxd=1:length(day_mapping)
+                for idxe=1:length(camera_list)
+                    
+                    it = opts.Transfs(transf_names{transf_list(idxt)});
+                    ie = opts.Cameras(camera_names{camera_list(idxe)});
+                    id = opts.Days(day_names{day_mapping(idxd)});
+                    
+                    figure( (idxt-1)*length(day_mapping)*length(camera_list)+(idxd-1)*length(camera_list)+idxe )
+                    scrsz = get(groot,'ScreenSize');
+                    set(gcf, 'Position', [scrsz(3)/8 scrsz(4)/8 scrsz(3)*3/4 scrsz(4)*3/4]);
+                    
+                    for cc=1:Nplots
+                        
+                        OO = [Ypred_01{opts.Cat(cat_names{cat_idx(cc)})}(:, it, id ,ie)];
+                        hh = subplot(Nrows, Ncols, cc);
+                        
+                        maxW = 1;
+                        for oo=obj_list
+                            W = length(OO{oo});
+                            if W>maxW
+                                maxW = W;
+                            end
+                        end
+                        
+                        AA = -ones(length(obj_list), maxW);
+                        for oo=1:length(obj_list)
+                            AA(oo, 1:length(OO{obj_list(oo)})) = OO{obj_list(oo)};
+                        end
+                        
+                        imagesc(AA)
+                        title(cat_names{cat_idx(cc)})
+                        cmapcomplete = [0 0 0; 1 0 0; 1 1 1]; % -1, 0, 1
+                        AAvalues = unique(AA);
+                        if length(AAvalues)<3
+                            if max(AAvalues)==0
+                                cmapcomplete(3,:) = [];
+                            end
+                            if min(AAvalues)==0
+                                cmapcomplete(1,:) = [];
+                            end
+                            if ~sum(AAvalues==0)
+                                cmapcomplete(2,:) = [];
+                            end
+                        end
+                        colormap(hh, cmapcomplete);
+                            
+                        %ylim([0.5 length(obj_list)+0.5]);
+                        set(gca, 'YTick', 1:length(obj_list));
+                        set(gca, 'YTickLabel', cellstr(num2str(obj_list(:)))');
+                        
+                    end
+                    
+                    stringtitle = {[experiment ', ' mapping ': tr ' transf_names{transf_list(idxt)} ', day ' num2str(day_mapping(idxd)) ', cam ' num2str(camera_list(idxe))]};
+                    if ~strcmp(mapping, 'none') && ~strcmp(mapping, 'select')
+                        stringtitle{end+1} = [set_names_4figs{1} ' - ' set_names_4figs{2}];
+                    end
+                    if strcmp(mapping, 'NN')
+                        stringtitle{end} = [stringtitle{end} ' - K = ' num2str(K(icat, iobj))];
+                    end
+                    
+                    suptitle(stringtitle);
+                    
+                    figname = ['Ypred01_' mapping '_'];
+                    figname = [figname strrep(strrep(num2str(obj_lists{loaded_set}), '   ', '-'), '  ', '-')];
+                    figname = [figname '_tr_' num2str(transf_list(idxt))];
+                    figname = [figname '_day_' num2str(day_mapping(idxd))];
+                    figname = [figname '_cam_' num2str(camera_list(idxe))];
+                    if ~strcmp(mapping, 'none') && ~strcmp(mapping, 'select')
+                        figname = [figname '_' set_names_prefix{loaded_set}];
+                        figname = [figname set_names{1} '_' set_names{2}];
+                    end
+                    
+                    saveas(gcf, fullfile(output_dir, 'figs/fig', [figname '.fig']));
+                    set(gcf,'PaperPositionMode','auto')
+                    print(fullfile(output_dir, 'figs/png', [figname '.png']),'-dpng','-r0')
+                end
+            end
+        end
+        
+        close all
+        
+        %% Ypred_4plots, Ytrue_4plots, Ypred_mode, Ypred_avg
+        
+        Nplots = length(cat_idx);
+        Ncols = min(Nplots, 5);
+        Nrows = ceil(Nplots/Ncols);
+        
+        for idxt=1:length(transf_list)
+            for idxd=1:length(day_mapping)
+                for idxe=1:length(camera_list)
+                    
+                    it = opts.Transfs(transf_names{transf_list(idxt)});
+                    ie = opts.Cameras(camera_names{camera_list(idxe)});
+                    id = opts.Days(day_names{day_mapping(idxd)});
+                    
+                    figure( (idxt-1)*length(day_mapping)*length(camera_list)+(idxd-1)*length(camera_list)+idxe )
+                    scrsz = get(groot,'ScreenSize');
+                    set(gcf, 'Position', [scrsz(3)/8 scrsz(4)/8 scrsz(3)*3/4 scrsz(4)*3/4]);
+                    
+                    for cc=1:length(cat_idx)
+                        
+                        OO = [Ypred_4plots{opts.Cat(cat_names{cat_idx(cc)})}(:, it, id ,ie)];
+                        
+                        TT = Ytrue_4plots{opts.Cat(cat_names{cat_idx(cc)})}(:, it, id ,ie);
+                        MODE = [Ypred_mode{opts.Cat(cat_names{cat_idx(cc)})}(:, it, id ,ie)];
+                        if compute_avg
+                            AVG = [Ypred_avg{opts.Cat(cat_names{cat_idx(cc)})}(:, it, id ,ie)];
+                        end
+                        
+                        hh1 = subplot(Nrows, 2*Ncols, 2*cc-1);
+                        
+                        maxW = 1;
+                        for oo=obj_list
+                            W = length(OO{oo});
+                            if W>maxW
+                                maxW = W;
+                            end
+                        end
+                        
+                        AA = -ones(length(obj_list), maxW);
+                        for oo=1:length(obj_list)
+                            AA(oo, 1:length(OO{obj_list(oo)})) = OO{obj_list(oo)};
+                        end
+                        
+                        imagesc(AA, [-1 Nlbls-1])
+                        title(cat_names{cat_idx(cc)})
+                        cmap = colormap(hh1, [0 0 0; jet(double(Nlbls))]);                      
+                        %ylim([0.5 length(obj_list)+0.5]);
+                        set(gca, 'YTick', 1:length(obj_list));
+                        set(gca, 'YTickLabel', cellstr(num2str(obj_list(:)))');
+                        
+                        hh2 = subplot(Nrows, 2*Ncols, 2*cc);
+                        
+                        if compute_avg 
+                            AA = -ones(length(obj_list), 3);
+                        else
+                            AA = -ones(length(obj_list), 2);
+                        end
+                        for oo=1:length(obj_list)
+                            AA(oo, 1) = TT(obj_list(oo));
+                            AA(oo, 2) = MODE{obj_list(oo)};
+                            if compute_avg
+                                AA(oo, 3) = AVG{obj_list(oo)};
+                            end
+                        end
+                        
+                        imagesc(AA, [0 Nlbls-1])
+                        title(cat_names{cat_idx(cc)})
+                        colormap(hh2, cmap(2:end, :));                      
+                        %ylim([0.5 length(obj_list)+0.5]);
+                        set(gca, 'YTick', 1:length(obj_list));
+                        ax = get(gca, 'Position');
+                        ax(3) = ax(3)/2;
+                        set(gca, 'Position', ax);
+                        set(gca, 'YTickLabel', cellstr(num2str(obj_list(:)))');
+                        if compute_avg
+                            set(gca, 'XTickLabel', {'true', 'mode', 'avg'});
+                        else
+                            set(gca, 'XTickLabel', {'true', 'mode'});
+                        end
+                        
+                    end
+                    
+                    stringtitle = {[experiment ', ' mapping ': tr ' transf_names{transf_list(idxt)} ', day ' num2str(day_mapping(idxd)) ', cam ' num2str(camera_list(idxe))]};
+                    if ~strcmp(mapping, 'none') && ~strcmp(mapping, 'select')
+                        stringtitle{end+1} = [set_names_4figs{1} ' - ' set_names_4figs{2}];
+                    end
+                    if strcmp(mapping, 'NN')
+                        stringtitle{end} = [stringtitle{end} ' - K = ' num2str(K(icat, iobj))];
+                    end
+                    
+                    suptitle(stringtitle);
+                   
+                    if use_imnetlabels
+                        figname = ['Ypredimnet_' mapping '_'];
+                    else
+                        figname = ['Ypred_' mapping '_'];
+                    end
+                    figname = [figname strrep(strrep(num2str(obj_lists{loaded_set}), '   ', '-'), '  ', '-')];
+                    figname = [figname '_tr_' num2str(transf_list(idxt))];
+                    figname = [figname '_day_' num2str(day_mapping(idxd))];
+                    figname = [figname '_cam_' num2str(camera_list(idxe))];
+                    if ~strcmp(mapping, 'none') && ~strcmp(mapping, 'select')
+                        figname = [figname '_' set_names_prefix{loaded_set}];
+                        figname = [figname set_names{1} '_' set_names{2}];
+                    end
+                    
+                    saveas(gcf, fullfile(output_dir, 'figs/fig', [figname '.fig']));
+                    set(gcf,'PaperPositionMode','auto')
+                    print(fullfile(output_dir, 'figs/png', [figname '.png']),'-dpng','-r0')
+                end
+            end
+        end
+
+        close all
         
         %% accuracies (frame-based / mode / avg)
         
@@ -548,7 +560,7 @@ for icat=1:length(cat_idx_all)
                             ytrue = Ytrue_4plots{opts.Cat(cat_names{cat_idx(cc)})}(io, it, id ,ie);
                             ytrue = repmat(ytrue, length(ypred), 1);
                            
-                            AA{1}((cc-1)*length(obj_list)+idxo,(idxt-1)*length(day_mapping)*length(camera_list)+(idxd-1)*length(camera_list)+idxe) = compute_accuracy(ypred, ytrue, 'gurls');
+                            AA{1}((cc-1)*length(obj_list)+idxo,(idxt-1)*length(day_mapping)*length(camera_list)+(idxd-1)*length(camera_list)+idxe) = compute_accuracy(ytrue, ypred, 'gurls');
             
                         end
                     end
@@ -586,7 +598,7 @@ for icat=1:length(cat_idx_all)
                             colidx1 = (idxt-1)*length(day_mapping)*length(camera_list)+(idxd-1)*length(camera_list)+1;
                             colidx2 = colidx1+(length(camera_list)-1);
                             colidx = colidx1:colidx2;
-                            a = compute_accuracy(ypred, ytrue, 'gurls');
+                            a = compute_accuracy(ytrue, ypred, 'gurls');
                             AA{2}(rowidx,colidx) = repmat(a, 1, length(camera_list));
             
                         
@@ -625,7 +637,7 @@ for icat=1:length(cat_idx_all)
                     colidx1 = (idxt-1)*length(day_mapping)*length(camera_list)+1;
                     colidx2 = colidx1+length(camera_list)*length(day_mapping)-1;
                     colidx = colidx1:colidx2;
-                    a = compute_accuracy(ypred, ytrue, 'gurls');
+                    a = compute_accuracy(ytrue, ypred, 'gurls');
                     AA{3}(rowidx,colidx) = repmat(a, 1, length(camera_list)*length(day_mapping));
                     
                 end
@@ -664,7 +676,7 @@ for icat=1:length(cat_idx_all)
                 colidx1 = (idxt-1)*length(day_mapping)*length(camera_list)+1;
                 colidx2 = colidx1+length(camera_list)*length(day_mapping)-1;
                 colidx = colidx1:colidx2;
-                a = compute_accuracy(ypred, ytrue, 'gurls');
+                a = compute_accuracy(ytrue, ypred, 'gurls');
                 AA{4}(rowidx,colidx) = repmat(a, length(obj_list), length(camera_list)*length(day_mapping));
                 
             end    
@@ -710,7 +722,7 @@ for icat=1:length(cat_idx_all)
             colidx1 = (idxt-1)*length(day_mapping)*length(camera_list)+1;
             colidx2 = colidx1+length(camera_list)*length(day_mapping)-1;
             colidx = colidx1:colidx2;
-            a = compute_accuracy(ypred, ytrue, 'gurls');
+            a = compute_accuracy(ytrue, ypred, 'gurls');
             AA{5}(rowidx,colidx) = repmat(a, length(obj_list)*length(cat_idx), length(camera_list)*length(day_mapping));
             
         end
@@ -718,7 +730,7 @@ for icat=1:length(cat_idx_all)
         % accuracy frame-based
         
         if strcmp(accum_method, 'none')
-            a = compute_accuracy(cell2mat(Ypred), cell2mat(Y), 'gurls');
+            a = compute_accuracy(cell2mat(Y), cell2mat(Ypred), 'gurls');
         elseif strcmp(accum_method, 'mode')
             
         elseif compute_avg && strcmp(accum_method, 'avg')
@@ -758,7 +770,7 @@ for icat=1:length(cat_idx_all)
         colorbar 
         
         stringtitle = {[experiment ', ' mapping ', ' accum_method]};
-        if ~strcmp(mapping, 'none')
+        if ~strcmp(mapping, 'none') && ~strcmp(mapping, 'select')
             stringtitle{end+1} = [set_names_4figs{1} ' - ' set_names_4figs{2}];
         end
         if strcmp(mapping, 'NN')
@@ -769,7 +781,7 @@ for icat=1:length(cat_idx_all)
         
         figname = ['acc_' mapping '_' accum_method '_'];
         figname = [figname strrep(strrep(num2str(obj_lists{loaded_set}), '   ', '-'), '  ', '-')];
-        if ~strcmp(mapping, 'none')
+        if ~strcmp(mapping, 'none') && ~strcmp(mapping, 'select')
             figname = [figname '_' set_names_prefix{loaded_set}];
             figname = [figname set_names{1} '_' set_names{2}];
         end
@@ -820,9 +832,14 @@ lgnd = cell(length(obj_lists_all), 1);
 for iobj=1:length(obj_lists_all)
     
     obj_lists = obj_lists_all{iobj};
-    lgnd{iobj} = '';
-    for sidx=1:Nsets
-        lgnd{iobj} = [lgnd{iobj} ' ' strrep(strrep(num2str(obj_lists{sidx}), '   ', '-'), '  ', '-')]; 
+    
+    if strcmp(mapping, 'none') || strcmp(mapping, 'select')
+        lgnd{iobj} = strrep(strrep(num2str(obj_lists{loaded_set}), '   ', '-'), '  ', '-'); 
+    else
+        lgnd{iobj} = '';
+        for sidx=1:Nsets
+            lgnd{iobj} = [lgnd{iobj} ' ' strrep(strrep(num2str(obj_lists{sidx}), '   ', '-'), '  ', '-')]; 
+        end
     end
 end
 
@@ -832,7 +849,7 @@ stringtitle = {[experiment ', ' mapping ', ' accum_method]};
 
 suptitle(stringtitle);
 
-figname = ['acc_' mapping '_' accum_method];
+figname = ['acc1_' mapping '_' accum_method];
 
 saveas(gcf, fullfile(output_dir_root, 'figs/fig', [figname '.fig']));
 set(gcf,'PaperPositionMode','auto')

@@ -45,8 +45,9 @@ experiment = 'categorization';
 % Mapping (used only to name the resulting predictions)
 
 if strcmp(experiment, 'categorization')
-    mapping = 'tuned';
+    %mapping = 'tuned';
     %mapping = 'none';
+    mapping = 'select';
 elseif strcmp(experiment, 'identification')
     mapping = 'tuned';
 else
@@ -57,7 +58,7 @@ end
 
 if strcmp(experiment, 'categorization') && strcmp(mapping, 'none')
     use_imnetlabels = true;
-elseif strcmp(experiment, 'categorization') && strcmp(mapping, 'tuned')
+elseif strcmp(experiment, 'categorization') && (strcmp(mapping, 'tuned') || strcmp(mapping, 'select'))
     use_imnetlabels = false;
 elseif strcmp(experiment, 'identification')
     use_imnetlabels = false;
@@ -68,19 +69,18 @@ end
 % Choose categories
 
 cat_idx_all = { [9 13], ...
-    %[8 9 13 14 15], ...
-    %[3 8 9 11 12 13 14 15 19 20], ...
-    [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20]};
+    [8 9 13 14 15], ...
+    [3 8 9 11 12 13 14 15 19 20]};
+    %[2 3 4 5 6 7 8 9 11 12 13 14 15 19 20]};
 
 % Choose objects per category
 
 if strcmp(experiment, 'categorization')
     
-    obj_lists_all = { {1, 5, [2 3 4 6 7 8 9 10]}, ...
-        %{1:2, 5, [3 4 6 7 8 9 10]}, ...
-        %{1:4, 5:7, 8:10}, ...
-        %{[1:4 6 7], 5, 8:10}, ...
-        {[1:4 6:9], 5, 10}};
+    obj_lists_all = { {1, 5, 8:10}}; %, ...
+        %{1:2, 5, 8:10}, ...
+        %{1:4, 5, 8:10}, ...
+        %{[1:4 6 7], 5, 8:10}};
     
 elseif strcmp(experiment, 'identification')
     
@@ -94,7 +94,8 @@ end
 
 % Choose transformation, day, camera
 
-transf_lists = {1:Ntransfs, 1:Ntransfs, 1:Ntransfs};
+transf_lists = {2, 2, 1:Ntransfs};
+%transf_lists = {1:Ntransfs, 1:Ntransfs, 1:Ntransfs};
 %transf_lists = {[2 3], [2 3], [2 3]};
 
 day_mappings = {1, 1, 1:2};
@@ -120,8 +121,8 @@ dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid384_disp_finaltree');
 %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid256_disp_finaltree');
 %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb30_disp_finaltree');
 
-%exp_dir = fullfile([dset_dir '_experiments'], 'test_offtheshelfnets');
-exp_dir = fullfile([dset_dir '_experiments'], 'tuning');
+exp_dir = fullfile([dset_dir '_experiments'], 'test_offtheshelfnets');
+%exp_dir = fullfile([dset_dir '_experiments'], 'tuning');
 
 model = 'googlenet';
 %model = 'bvlc_reference_caffenet';
@@ -180,7 +181,7 @@ for icat=1:length(cat_idx_all)
             set_names{ii} = [set_names{ii} '_day_' strrep(strrep(num2str(day_mappings{ii}), '   ', '-'), '  ', '-')];
         end
         
-        %% Load Y and create X for train, val and test sets to compute native Ypred
+        %% Load Y and create X to compute native Ypred
         
         % load Y
         if use_imnetlabels
@@ -189,13 +190,28 @@ for icat=1:length(cat_idx_all)
             load(fullfile(input_dir_regtxt, ['Y_' set_names{loaded_set} '.mat']));
         end
         
+        % set selected scores
+        if strcmp(mapping, 'select')
+            
+            %sel_idxs = cell(Ncat, 1);
+            %sel_idxs(cell2mat(values(opts.Cat, cat_names(cat_idx)))) = values( opts.Cat_ImnetLabels, cat_names(cat_idx));
+            %sel_idxs = cell2mat(sel_idxs(~cellfun(@isempty, sel_idxs)));
+            
+            sel_idxs = cell2mat(values(opts.Cat_ImnetLabels));
+            sel_idxs = sel_idxs(cat_idx)+1;
+            
+            if sum(sel_idxs>1000)
+                error('You are selecting scores > 1000!');
+            end
+        end
+        
         % load REG and create X
         load(fullfile(input_dir_regtxt, ['REG_' set_names{loaded_set} '.mat']));
         X = cell(Ncat, 1);
         NframesPerCat = cell(Ncat, 1);
         for cc=cat_idx
             NframesPerCat{opts.Cat(cat_names{cc})} = length(REG{opts.Cat(cat_names{cc})});
-            if strcmp(mapping, 'tuned') && strcmp(experiment, 'categorization')
+            if (strcmp(mapping, 'select') || strcmp(mapping, 'tuned')) && strcmp(experiment, 'categorization')
                 score_length = length(cat_idx);
             elseif strcmp(mapping, 'tuned') && strcmp(experiment, 'identification')
                 score_length = length(obj_lists{loaded_set});
@@ -204,12 +220,17 @@ for icat=1:length(cat_idx_all)
             end
             X{opts.Cat(cat_names{cc})} = zeros(NframesPerCat{opts.Cat(cat_names{cc})}, score_length);
             for ff=1:NframesPerCat{opts.Cat(cat_names{cc})}
-                if strcmp(mapping, 'none')
-                    fid = fopen(fullfile(input_dir, cat_names{cc}, [REG{opts.Cat(cat_names{cc})}{ff}(1:(end-4)) '.txt']));
+                if strcmp(mapping, 'none') || strcmp(mapping, 'select')
+                    fid = fopen(fullfile(input_dir_root, cat_names{cc}, [REG{opts.Cat(cat_names{cc})}{ff}(1:(end-4)) '.txt']));
                 else
                     fid = fopen(fullfile(input_dir, [set_names{1} '_' set_names{2} '_' set_names{3}], cat_names{cc}, [REG{opts.Cat(cat_names{cc})}{ff}(1:(end-4)) '.txt']));
                 end
-                X{opts.Cat(cat_names{cc})}(ff,:) = cell2mat(textscan(fid, '%f'))';
+                if strcmp(mapping, 'select')
+                    x = cell2mat(textscan(fid, '%f'))';
+                    X{opts.Cat(cat_names{cc})}(ff,:) = x(sel_idxs);
+                else
+                    X{opts.Cat(cat_names{cc})}(ff,:) = cell2mat(textscan(fid, '%f'))';
+                end
                 fclose(fid);
             end
         end
@@ -233,7 +254,7 @@ for icat=1:length(cat_idx_all)
         
         if strcmp(mapping, 'tuned')
             save(fullfile(output_dir_regtxt, ['Y_' mapping '_' set_names{1} '_' set_names{2} '_' set_names{3} '.mat'] ), 'Ypred', 'acc', '-v7.3');
-        elseif strcmp(mapping, 'none')
+        elseif strcmp(mapping, 'none') || strcmp(mapping, 'select')
             save(fullfile(output_dir_regtxt, ['Y_' mapping '_' set_names{loaded_set}((length(set_names_prefix{loaded_set})+1):end) '.mat'] ), 'Ypred', 'acc', '-v7.3');
         end
        

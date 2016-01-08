@@ -1,4 +1,4 @@
-function acc = compute_accuracy(y, ypred, acc_method)
+function [acc, C] = compute_accuracy(y, ypred, acc_method)
  
 [classes, ~, ~] = unique(y);
 n_classes = length(classes);
