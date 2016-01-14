@@ -31,7 +31,7 @@ Ncameras = opts.Cameras.Count;
 
 %% Whether to create the full-path registries (e.g. for DIGITS)
 
-create_fullpath = true;
+create_fullpath = false;
 
 if create_fullpath
     dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid384_disp_finaltree');
@@ -44,7 +44,7 @@ end
 
 % Default sets that are created
 
-set_names_prefix = {'train_'};
+set_names_prefix = {'test_'};
 Nsets = length(set_names_prefix);
 
 % Experiment kind
@@ -68,7 +68,7 @@ cat_idx_all = {[2 3 4 5 6 7 8 9 11 12 13 14 15 19 20]};
 
 if strcmp(experiment, 'categorization')
     
-    obj_lists_all = { {1:7} };
+    obj_lists_all = { {8:10} };
     
 elseif strcmp(experiment, 'identification')
     
@@ -82,10 +82,9 @@ end
 
 % Choose transformation, day, camera
 
-%transf_lists_all = { {5}, {[4 5]}, {[2 4 5]}, {2:5}, {1:5}};
-transf_lists_all = { {1}, {2}, {3}, {4}};
+transf_lists_all = { {1:5}, {5}};
 
-day_mappings_all = { {1} };
+day_mappings_all = { {1:2} };
 day_lists_all = cell(length(day_mappings_all),1);
 
 for ee=1:length(day_mappings_all)
@@ -135,7 +134,8 @@ same_size = false;
 if same_size == true
     NsamplesReference = cell(Ncat, 1);
     
-    question_dir = 'instancesORtransfs';
+    %question_dir = 'frameORtransf';
+    question_dir = 'frameORinst';
     
 end
 

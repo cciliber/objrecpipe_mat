@@ -1,6 +1,8 @@
 %% Visualize errors
 
-fid = fopen('/data/giulia/ICUBWORLD_ULTIMATE/iCubWorldUltimate_centroid384_disp_finaltree_experiments/tuning/predictions/googlenet/categorization/Ncat_15/2-3-4-5-6-7-8-9-11-12-13-14-15-19-20/vgg_errors.txt');
+%fid = fopen('/data/giulia/ICUBWORLD_ULTIMATE/iCubWorldUltimate_centroid256_disp_finaltree_experiments/tuning/predictions/caffenet/categorization/Ncat_15/2-3-4-5-6-7-8-9-11-12-13-14-15-19-20/caffenet_errors.txt');
+fid = fopen('/home/icub/Desktop/caffe_errors.txt');
+
 predictions = textscan(fid, '%s \t %s %d %*[^\n]');
 fclose(fid);
 
@@ -26,6 +28,8 @@ wrong = ~cellfun(@strcmp, classtrue, classpred);
 Nerrors = sum(wrong);
 N = length(wrong);
 acc = (N - Nerrors)/N;
+
+acc2 = compute_accuracy(ytrue, ypred, 'gurls');
 
 % show misclassified frames
 
