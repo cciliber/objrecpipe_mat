@@ -36,12 +36,25 @@ for dd=1:length(day_list)
                    
     %montage(fullfile(in_dir, 'right', imgR_path), 'Size', [2 NaN]);
     montage(fullfile(in_dir, 'right', imgR_path));
-    imdisp(fullfile(in_dir, 'right', imgR_path), 'Size', [2 10])
+    
     set(fig_handle, 'Position', [scrsz(3)/8 scrsz(4)/8 scrsz(3)*3/4 scrsz(4)*3/4]);
     
+    x=1:10;
+    scrollsubplot(3,1,-1), plot(x, 2+x)
+      scrollsubplot(3,1,1), plot(x, 2+x)
+      scrollsubplot(3,1,2), plot(x, 2+x)
+      scrollsubplot(3,1,3), plot(x, 2+x)
+      scrollsubplot(3,1,4), plot(x, 2+x)
+
 % Create the figure
 hFig1 = figure('Toolbar','none', 'Menubar','none', 'Name','My Image Compare Tool', 'NumberTitle','off', 'IntegerHandle','off');
-hIm1 = montage(fullfile(in_dir, 'right', imgR_path), 'Size', [2 NaN]);
+hIm1 = imdisp(fullfile(in_dir, 'right', imgR_path), 'Size', [2 10])
+ x=1:10;
+      h(1) = subplot(3,1,1), imagesc(zeros(100))
+      h(2) = subplot(3,1,2), imagesc(zeros(100))
+      h(3) = subplot(3,1,3), imagesc(zeros(100))
+      selectplots(h)
+%cmontage(fullfile(in_dir, 'right', imgR_path), 'Size', [2 NaN]);
 
 hFig2 = figure('Toolbar','none', 'Menubar','none', 'Name','My Image Compare Tool', 'NumberTitle','off', 'IntegerHandle','off');
 hIm2 = montage(fullfile(in_dir, 'left', imgL_path), 'Size', [2 NaN]);
