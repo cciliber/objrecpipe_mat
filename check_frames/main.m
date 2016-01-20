@@ -1,12 +1,11 @@
-FEATURES_DIR = '/Users/giulia/REPOS/objrecpipe_mat';
-%FEATURES_DIR = '/home/giulia/REPOS/objrecpipe_mat';
+%FEATURES_DIR = '/Users/giulia/REPOS/objrecpipe_mat';
+FEATURES_DIR = '/home/giulia/REPOS/objrecpipe_mat';
 %FEATURES_DIR = '/data/giulia/REPOS/objrecpipe_mat';
 addpath(genpath(FEATURES_DIR));
 
 %DATA_DIR = '/media/giulia/MyPassport';
-DATA_DIR = '/Users/giulia/ICUBWORLD_ULTIMATE/registries';
-%DATA_DIR = '/data/giulia/ICUBWORLD_ULTIMATE';
-%DATA_DIR = '/media/giulia/DATA';
+%DATA_DIR = '/Users/giulia/ICUBWORLD_ULTIMATE/registries';
+DATA_DIR = '/media/giulia/DATA/iCubWorldUltimate_registries';
 
 %% Dataset info
 
@@ -58,11 +57,12 @@ day_list = day_names(day_list);
 %% Set the IO root dirs
 
 % Input dataset
-dset_in_root = '/Volumes/Elements/ICUBWORLD_ULTIMATE/iCubWorldUltimate_finaltree';
+%dset_in_root = '/Volumes/Elements/ICUBWORLD_ULTIMATE/iCubWorldUltimate_finaltree';
+dset_in_root = '/media/giulia/DATA/iCubWorldUltimate_finaltree';
 check_input_dir(dset_in_root);
 
 % Output dataset
-dset_out_root = '/Users/giulia/ICUBWORLD_ULTIMATE/iCubWorldUltimate_finaltree_checked';
+dset_out_root = '/media/giulia/DATA/iCubWorldUltimate_finaltree_checked';
 check_output_dir(dset_out_root);
 
 %% Set the modality
