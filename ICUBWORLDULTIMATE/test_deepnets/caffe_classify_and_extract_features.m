@@ -151,7 +151,8 @@ phase = 'test'; % run with phase test (so that dropout isn't applied)
    
 %% Choose caffe model
 
-model = 'caffenet';
+%model = 'caffenet';
+model = 'googlenet';
 
 if strcmp(model, 'caffenet') && strcmp(mapping, 'none')
     
@@ -163,19 +164,57 @@ if strcmp(model, 'caffenet') && strcmp(mapping, 'none')
     caffepaths.mean_path = fullfile(caffe_dir, 'matlab/+caffe/imagenet/ilsvrc_2012_mean.mat');
    
     CROP_SIZE = 227;
-    MEAN_SIZE = 256;
-    NCROPS = 10;
     
     % remember that actual caffe batch size is max_batch_size*NCROPS !!!!
     max_bsize = 50; 
     
     % net definition
     oversample = true;
+    if oversample 
+        NCROPS = 10;
+    else
+        NCROPS=1;
+    end
     caffepaths.net_model = fullfile(model_dir, 'deploy.prototxt');
     
     % features to extract
-    feat_names = {'fc6', 'fc7' ,'fc8'};
-    nFeat = length(feat_names);
+    extract_features = true;
+    if extract_features
+        feat_names = {'fc6', 'fc7' ,'fc8'};
+        nFeat = length(feat_names);
+    end
+    
+elseif strcmp(model, 'googlenet') && strcmp(mapping, 'none')
+
+    % net weights
+    model_dir = fullfile(caffe_dir, 'models/bvlc_googlenet/');
+    caffepaths.net_weights = fullfile(model_dir, 'bvlc_googlenet.caffemodel');
+   
+    CROP_SIZE = 224;
+        
+    % remember that actual caffe batch size is max_batch_size*NCROPS !!!!
+    max_bsize = 10; 
+    
+    % net definition
+    overscale = true;
+    oversample = true;
+    if oversample && overscale
+        NCROPS = 48;
+    elseif overscale 
+        NCROPS=4;
+    elseif oversample
+        NCROPS=12;
+    else 
+        NCROPS=1;
+    end
+    caffepaths.net_model = fullfile(model_dir, 'deploy.prototxt');
+    
+    % features to extract
+    extract_features = false;
+    if extract_features
+        feat_names = [];
+        nFeat = length(feat_names);
+    end
     
 end
 
@@ -200,8 +239,12 @@ if max_bsize*NCROPS ~= bsize_net
 end
                             
 % Load mean
-d = load(caffepaths.mean_path);
-mean_data = d.mean_data;
+if strcmp(model, 'caffenet') && strcmp(mapping, 'none')
+    d = load(caffepaths.mean_path);
+    mean_data = d.mean_data;
+elseif strcmp(model, 'googlenet') && strcmp(mapping, 'none')
+    mean_data = [104 117 123];
+end
                         
 %% Input images
 
@@ -223,8 +266,10 @@ exp_dir = fullfile([dset_dir '_experiments'], 'test_offtheshelfnets');
 output_dir_root_y = fullfile(exp_dir, 'predictions', model, experiment);
 check_output_dir(output_dir_root_y);
 
-output_dir_root_fc = fullfile(exp_dir, 'scores', model);
-check_output_dir(output_dir_root_fc);
+if extract_features 
+    output_dir_root_fc = fullfile(exp_dir, 'scores', model);
+    check_output_dir(output_dir_root_fc);
+end
 
 %% For each experiment, go!
 
@@ -304,7 +349,7 @@ for icat=1:length(cat_idx_all)
                     
                     load(fullfile(input_dir_regtxt, ['REG_' set_names{loaded_set} '.mat']));
                     
-                    %% Extract features+scores and compute predictions
+                    %% Extract scores (+ features) and compute predictions
                     
                     Ypred = cell(Ncat,1);                  
                     NframesPerCat = cell(Ncat, 1);
@@ -348,15 +393,19 @@ for icat=1:length(cat_idx_all)
                             end
                             
                             % extract features in batches
-                            feat = cell(nFeat,1);
-                            for ff=1:nFeat
-                                feat{ff} = net.blobs(feat_names{ff}).get_data();
+                            if extract_features 
+                                feat = cell(nFeat,1);
+                                for ff=1:nFeat
+                                    feat{ff} = net.blobs(feat_names{ff}).get_data();
+                                end
                             end
                             
                             % reshape, dividing features and scores per image
                             scores = reshape(scores, [], NCROPS, bsize_curr);
-                            for ff=1:nFeat
-                                feat{ff} = reshape(feat{ff}, [], NCROPS, bsize_curr);
+                            if extract_features 
+                                for ff=1:nFeat
+                                    feat{ff} = reshape(feat{ff}, [], NCROPS, bsize_curr);
+                                end
                             end
                             
                             % take average scores over 10 crops
@@ -367,15 +416,17 @@ for icat=1:length(cat_idx_all)
                             maxlabel = maxlabel - 1;
 
                             % save extracted features 
-                            for imidx=1:bsize_curr
-                                for ff=1:nFeat                   
-                                    fc = feat{ff}(:,:,imidx);                                 
-                                    outpath = fullfile(output_dir_root_fc, feat_names{ff}, cat_names{cc}, fileparts(REG{opts.Cat(cat_names{cc})}{bstart+imidx-1})); 
-                                    check_output_dir(outpath);
-                                    save(fullfile(output_dir_root_fc, feat_names{ff}, cat_names{cc}, [REG{opts.Cat(cat_names{cc})}{bstart+imidx-1}(1:(end-4)) '.mat']), 'fc');
+                            if extract_features
+                                for imidx=1:bsize_curr
+                                    for ff=1:nFeat
+                                        fc = feat{ff}(:,:,imidx);
+                                        outpath = fullfile(output_dir_root_fc, feat_names{ff}, cat_names{cc}, fileparts(REG{opts.Cat(cat_names{cc})}{bstart+imidx-1}));
+                                        check_output_dir(outpath);
+                                        save(fullfile(output_dir_root_fc, feat_names{ff}, cat_names{cc}, [REG{opts.Cat(cat_names{cc})}{bstart+imidx-1}(1:(end-4)) '.mat']), 'fc');
+                                    end
                                 end
                             end
- 
+                            
                             % store all predictions in Y 
                             Ypred{opts.Cat(cat_names{cc})}(bstart:bend) = maxlabel;
                             

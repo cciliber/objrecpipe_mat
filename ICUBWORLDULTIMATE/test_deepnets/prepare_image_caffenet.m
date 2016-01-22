@@ -43,7 +43,8 @@ else
     
     % pick only the central crop
  
-     center = floor(indices(2) / 2) + 1;
+     %center = floor(indices(2) / 2) + 1;
+     center = floor(indices(2) / 2);
      crops_data = ...
         im_data(center:center+CROPPED_DIM-1,center:center+CROPPED_DIM-1,:);
     
