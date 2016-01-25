@@ -153,6 +153,7 @@ phase = 'test'; % run with phase test (so that dropout isn't applied)
 
 %model = 'caffenet';
 model = 'googlenet';
+%model = 'vgg16';
 
 if strcmp(model, 'caffenet') && strcmp(mapping, 'none')
     
@@ -191,22 +192,36 @@ elseif strcmp(model, 'googlenet') && strcmp(mapping, 'none')
     caffepaths.net_weights = fullfile(model_dir, 'bvlc_googlenet.caffemodel');
    
     CROP_SIZE = 224;
-        
+    
+    % whether to consider multiple scales
+    SHORTER_SIDE = [256 288 320 352];
+    %SHORTER_SIDE = 256;
+    
+    % whether to consider multiple crops
+    %GRID = '3-6';
+    GRID = '1-6';
+    %GRID = '3-1';
+    %GRID='1x1';
+    %GRID = '5x5';
+    
+    %% assign number of total crops per image
+    grid1 = strsplit(GRID, '-');
+    grid2 = strsplit(GRID, 'x');
+    if ~isempty(grid1)
+        grid_side = grid1{1};
+        grid_side = num2str(grid_side);
+        NsmallCROPS = grid1{2};
+        NsmallCROPS = num2str(NsmallCROPS);
+        NCROPS = grid_side*NsmallCROPS*2;
+    elseif ~isempty(grid2)
+        grid_side = num2str(grid2{1});
+        NCROPS = grid_side*grid_side*2;
+    end
+    NCROPS=NCROPS*length(SHORTER_SIDE);
+    
     % remember that actual caffe batch size is max_batch_size*NCROPS !!!!
     max_bsize = 10; 
     
-    % net definition
-    overscale = true;
-    oversample = true;
-    if oversample && overscale
-        NCROPS = 48;
-    elseif overscale 
-        NCROPS=4;
-    elseif oversample
-        NCROPS=12;
-    else 
-        NCROPS=1;
-    end
     caffepaths.net_model = fullfile(model_dir, 'deploy.prototxt');
     
     % features to extract
@@ -215,6 +230,52 @@ elseif strcmp(model, 'googlenet') && strcmp(mapping, 'none')
         feat_names = [];
         nFeat = length(feat_names);
     end
+    
+elseif strcmp(model, 'vgg16') && strcmp(mapping, 'none')
+
+    % net weights
+    model_dir = fullfile(caffe_dir, 'models/VGG/VGG_ILSVRC_16');
+    caffepaths.net_weights = fullfile(model_dir, 'VGG_ILSVRC_16_layers.caffemodel');
+   
+    CROP_SIZE = 224;
+  
+   % whether to consider multiple scales
+    %SHORTER_SIDE = [256 288 320 352];
+    SHORTER_SIDE = 256;
+    
+    % whether to consider multiple crops
+    %GRID = '3-6';
+    %GRID = '1-6';
+    %GRID = '3-1';
+    %GRID='1x1';
+    GRID = '5x5';
+    
+    %% assign number of total crops per image
+    grid1 = strsplit(GRID, '-');
+    grid2 = strsplit(GRID, 'x');
+    if ~isempty(grid1)
+        grid_side = grid1{1};
+        grid_side = num2str(grid_side);
+        NsmallCROPS = grid1{2};
+        NsmallCROPS = num2str(NsmallCROPS);
+        NCROPS = grid_side*NsmallCROPS*2;
+    elseif ~isempty(grid2)
+        grid_side = num2str(grid2{1});
+        NCROPS = grid_side*grid_side*2;
+    end
+    NCROPS=NCROPS*length(SHORTER_SIDE);
+    
+    % remember that actual caffe batch size is max_batch_size*NCROPS !!!!
+    max_bsize = 2; 
+
+    caffepaths.net_model = fullfile(model_dir, 'VGG_ILSVRC_16_layers_deploy.prototxt');
+    
+    % features to extract
+    extract_features = true;
+    if extract_features
+        feat_names = {'fc6', 'fc7' ,'fc8'};
+        nFeat = length(feat_names);
+    end    
     
 end
 
@@ -244,6 +305,8 @@ if strcmp(model, 'caffenet') && strcmp(mapping, 'none')
     mean_data = d.mean_data;
 elseif strcmp(model, 'googlenet') && strcmp(mapping, 'none')
     mean_data = [104 117 123];
+elseif strcmp(model, 'vgg16') && strcmp(mapping, 'none')
+    mean_data = [103.939 116.779 123.68];
 end
                         
 %% Input images
@@ -381,7 +444,13 @@ for icat=1:length(cat_idx_all)
                             input_data = zeros(CROP_SIZE,CROP_SIZE,3,bsize_curr*NCROPS, 'single');
                             for imidx=1:bsize_curr
                                 im = imread(fullfile(dset_dir, cat_names{cc}, [REG{opts.Cat(cat_names{cc})}{bstart+imidx-1}(1:(end-4)) '.jpg']));
-                                input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image_caffenet(im, mean_data, oversample);
+                                
+                                if strcmp(model, 'caffenet') && strcmp(mapping, 'none')
+                                    input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image_caffenet(im, mean_data, oversample);
+                                elseif ( strcmp(model, 'googlenet') || strcmp(model, 'vgg16') ) && strcmp(mapping, 'none')
+                                    input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image_googlenet_vgg16(im, mean_data, CROP_SIZE, SHORTER_SIDE, GRID);
+                                end
+                                
                             end
                             
                             % extract scores in batches
