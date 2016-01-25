@@ -1,24 +1,24 @@
-function crops_data = prepare_image_googlenet(im, mean_data, CROPPED_DIM, SHORTER_SIDE, GRID)
+function crops_data = prepare_image_multiscalecrop(im, mean_data, CROPPED_DIM, SHORTER_SIDE, GRID)
                                     
 %% GOOGLENET paper preprocessing:
 % 1. resize the image to 4 scales where the shorter dim is 256, 288, 320, 352
 % 2. take the left, center and right squares (top, center and bottom)
-% 3. for each square, take the 4 corners and the center 224×224 crop
-%    as well as the square resized to 224×224 and their mirrored versions
-% --> this results in 4×3×6×2 = 144 crops per image
+% 3. for each square, take the 4 corners and the center 224x224 crop
+%    as well as the square resized to 224x224 and their mirrored versions
+% --> this results in 4x3x6x2 = 144 crops per image
 
 %% VGG paper's preprocessing:
 % 1. resize the image to 3 scales where the shorter dim is 256, 384, 512
-% 2. take a 5x5 grid of 224×224 crops + mirrored versions
-% --> this results in 3×25×2 = 150 crops per image
+% 2. take a 5x5 grid of 224x224 crops + mirrored versions
+% --> this results in 3x25x2 = 150 crops per image
 
 % Our alternative reduced preprocessing:
 % 1. we also fix the scale
 % 2. we also try the other's preprocessing between the two
-% 3. we also take only the center 224×224 crop
+% 3. we also take only the center 224x224 crop
 
-%% Convert an image returned by Matlab's imread to im_data in caffe's data
-% format: W x H x C with BGR channels
+%% Convert an image returned by Matlab's imread 
+% to caffe's data format: W x H x C with BGR channels
 
 im_data = im(:, :, [3, 2, 1]);  % permute channels from RGB to BGR
 im_data = permute(im_data, [2, 1, 3]);  % flip width and height
@@ -35,17 +35,22 @@ grid1 = strsplit(GRID, '-');
 grid2 = strsplit(GRID, 'x');
 if ~isempty(grid1)
     
-    grid_side = grid1{1};
-    grid_side = num2str(grid_side);
+    grid_side = num2str(grid1{1});
     if grid_side>1
         grid_nodes = linspace(0,1,grid_side);
     else
         grid_nodes = 0.5;
     end
-    NsmallCROPS = grid1{2};
-    NsmallCROPS = num2str(NsmallCROPS);
-    NCROPS = grid_side*NsmallCROPS*2;
-
+    
+    sub_grid_side = num2str(grid1{2});
+    if sub_grid_side>1
+        sub_grid_nodes = linspace(0,1,sub_grid_side);
+        NCROPS = grid_side*(sub_grid_side*sub_grid_side+2)*2;
+    else
+        sub_grid_nodes = 0.5;
+        NCROPS = grid_side;
+    end
+    
 elseif ~isempty(grid2)
     
     grid_side = num2str(grid2{1});
@@ -104,34 +109,33 @@ for rr=1:N_SCALES
         % for each squared crop take:
         % either the 4 corners + center + resized and mirrored versions
         % or only the center + resized and mirrored version
-        indices = [0 SHORTER_SIDE(rr)-CROPPED_DIM] + 1;
-        center = floor(indices(2) / 2);
-        
+        indices = floor((SHORTER_SIDE(rr) - CROP_DIM) * sub_grid_nodes) + 1 ;
         for cc=1:grid_side
-            
-            if NsmallCROPS==6   
-                startidx = N_SCALES*grid_side*NsmallCROPS*2*(rr-1)+NsmallCROPS*2*(cc-1);
-                n = 1;
-                for i = indices
-                    for j = indices
-                        crops_data(:, :, :, startidx+n) = resized_cropped_data(i:i+CROPPED_DIM-1, j:j+CROPPED_DIM-1, :, cc);
-                        crops_data(:, :, :, startidx+n+NsmallCROPS) = crops_data(end:-1:1, :, :, startidx+n);
-                        n = n + 1;
+            if sub_grid_side>1   
+                startidx = (rr-1)*grid_side*(sub_grid_side*sub_grid_side+2)*2 + ...
+                    (cc-1)*(sub_grid_side*sub_grid_side+2)*2;
+            else
+                startidx = (rr-1)*grid_side+cc-1;
+            end
+            n = 1;
+            for i = indices
+                for j = indices
+                    crops_data(:, :, :, startidx+n) = resized_cropped_data(i:i+CROPPED_DIM-1, j:j+CROPPED_DIM-1, :, cc);
+                    if sub_grid_nodes>1
+                        crops_data(:, :, :, startidx+n+(sub_grid_side*sub_grid_side+2)) = crops_data(end:-1:1, :, :, startidx+n);
                     end
+                    n = n + 1;
                 end
-                % pick the central crop + all image resized and mirror
-                crops_data(:,:,:,startidx+NsmallCROPS-1) = ...
-                    resized_cropped_data(center:center+CROPPED_DIM-1,center:center+CROPPED_DIM-1,:,cc);
-                crops_data(:,:,:,startidx+(NsmallCROPS-1)*2) = crops_data(end:-1:1, :, :, startidx+NsmallCROPS-1);
-                crops_data(:,:,:,startidx+NsmallCROPS) = ...
+            end
+            if sub_grid_nodes>1
+                i = floor(indices(end)/2);
+                j = i;
+                crops_data(:, :, :, startidx+n) = resized_cropped_data(i:i+CROPPED_DIM-1, j:j+CROPPED_DIM-1, :, cc);
+                crops_data(:, :, :, startidx+2*n) = crops_data(end:-1:1, :, :, startidx+n);
+                crops_data(:,:,:,startidx+n+1) = ...
                     imresize(resized_cropped_data(:,:,:,cc), [CROPPED_DIM CROPPED_DIM], 'bilinear');
-                crops_data(:,:,:,startidx+NsmallCROPS*2) = crops_data(end:-1:1, :, :, startidx+NsmallCROPS);
-            elseif NsmallCROPS==1
-                startidx = N_SCALES*grid_side*NsmallCROPS*(rr-1)+NsmallCROPS*(cc-1);
-                n = 1;
-                crops_data(:, :, :, startidx+n) = ...
-                    resized_cropped_data(center:center+CROPPED_DIM-1,center:center+CROPPED_DIM-1,:,cc);
-            end            
+                crops_data(:,:,:,startidx+(n+1)*2) = crops_data(end:-1:1, :, :, startidx+n+1);     
+            end      
         end
         
     elseif ~isempty(grid2)

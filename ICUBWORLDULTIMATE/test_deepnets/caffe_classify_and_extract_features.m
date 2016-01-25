@@ -198,11 +198,11 @@ elseif strcmp(model, 'googlenet') && strcmp(mapping, 'none')
     %SHORTER_SIDE = 256;
     
     % whether to consider multiple crops
-    %GRID = '3-6';
-    GRID = '1-6';
+    %GRID = '3-2';
+    GRID = '1-2';
     %GRID = '3-1';
-    %GRID='1x1';
-    %GRID = '5x5';
+    %GRID='1';
+    %GRID = '5';
     
     %% assign number of total crops per image
     grid1 = strsplit(GRID, '-');
