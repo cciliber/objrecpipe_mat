@@ -1,3 +1,3 @@
-function gurls_setup(gurls_dir)
+function gurls_setup()
 
-run(fullfile(gurls_dir, 'gurls/utils/gurls_install.m'));
+run(fullfile(getenv('Gurls_ROOT'), 'gurls/utils/gurls_install.m'));
