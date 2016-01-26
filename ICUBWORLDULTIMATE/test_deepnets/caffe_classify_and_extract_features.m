@@ -194,28 +194,34 @@ elseif strcmp(model, 'googlenet') && strcmp(mapping, 'none')
     CROP_SIZE = 224;
     
     % whether to consider multiple scales
-    SHORTER_SIDE = [256 288 320 352];
-    %SHORTER_SIDE = 256;
+    %SHORTER_SIDE = [256 288 320 352];
+    SHORTER_SIDE = 256;
     
     % whether to consider multiple crops
     %GRID = '3-2';
-    GRID = '1-2';
+    %GRID = '1-2';
     %GRID = '3-1';
-    %GRID='1';
-    %GRID = '5';
+    GRID='1x1';
+    %GRID = '5x5';
     
     %% assign number of total crops per image
     grid1 = strsplit(GRID, '-');
     grid2 = strsplit(GRID, 'x');
-    if ~isempty(grid1)
-        grid_side = grid1{1};
-        grid_side = num2str(grid_side);
-        NsmallCROPS = grid1{2};
-        NsmallCROPS = num2str(NsmallCROPS);
-        NCROPS = grid_side*NsmallCROPS*2;
-    elseif ~isempty(grid2)
-        grid_side = num2str(grid2{1});
-        NCROPS = grid_side*grid_side*2;
+    if length(grid1)>1
+        grid_side = str2num(grid1{1});
+        sub_grid_side = str2num(grid1{2});
+        if sub_grid_side>1
+            NCROPS = grid_side*(sub_grid_side*sub_grid_side+2)*2;
+        else
+            NCROPS = grid_side;
+        end
+    elseif length(grid2)>1
+        grid_side = str2num(grid2{1});
+        if grid_side>1
+            NCROPS = grid_side*grid_side*2;
+        else
+            NCROPS = 1;
+        end
     end
     NCROPS=NCROPS*length(SHORTER_SIDE);
     
@@ -244,8 +250,8 @@ elseif strcmp(model, 'vgg16') && strcmp(mapping, 'none')
     SHORTER_SIDE = 256;
     
     % whether to consider multiple crops
-    %GRID = '3-6';
-    %GRID = '1-6';
+    %GRID = '3-2';
+    %GRID = '1-2';
     %GRID = '3-1';
     %GRID='1x1';
     GRID = '5x5';
@@ -253,20 +259,22 @@ elseif strcmp(model, 'vgg16') && strcmp(mapping, 'none')
     %% assign number of total crops per image
     grid1 = strsplit(GRID, '-');
     grid2 = strsplit(GRID, 'x');
-    if ~isempty(grid1)
-        grid_side = grid1{1};
-        grid_side = num2str(grid_side);
-        NsmallCROPS = grid1{2};
-        NsmallCROPS = num2str(NsmallCROPS);
-        NCROPS = grid_side*NsmallCROPS*2;
-    elseif ~isempty(grid2)
-        grid_side = num2str(grid2{1});
+    if length(grid1)>1
+        grid_side = str2num(grid1{1});
+        sub_grid_side = str2num(grid1{2});
+        if sub_grid_side>1
+            NCROPS = grid_side*(sub_grid_side*sub_grid_side+2)*2;
+        else
+            NCROPS = grid_side;
+        end
+    elseif length(grid2)>1
+        grid_side = str2num(grid2{1});
         NCROPS = grid_side*grid_side*2;
     end
     NCROPS=NCROPS*length(SHORTER_SIDE);
     
     % remember that actual caffe batch size is max_batch_size*NCROPS !!!!
-    max_bsize = 2; 
+    max_bsize = 2;
 
     caffepaths.net_model = fullfile(model_dir, 'VGG_ILSVRC_16_layers_deploy.prototxt');
     
@@ -448,7 +456,7 @@ for icat=1:length(cat_idx_all)
                                 if strcmp(model, 'caffenet') && strcmp(mapping, 'none')
                                     input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image_caffenet(im, mean_data, oversample);
                                 elseif ( strcmp(model, 'googlenet') || strcmp(model, 'vgg16') ) && strcmp(mapping, 'none')
-                                    input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image_googlenet_vgg16(im, mean_data, CROP_SIZE, SHORTER_SIDE, GRID);
+                                    input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image_multiscalecrop(im, mean_data, CROP_SIZE, SHORTER_SIDE, GRID);
                                 end
                                 
                             end
