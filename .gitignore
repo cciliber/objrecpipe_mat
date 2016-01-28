@@ -32,3 +32,8 @@
 
 # Linux generated files 
 *.*~
+
+# cpp data
+build
+*.cproject
+*.project

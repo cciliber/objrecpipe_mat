@@ -70,9 +70,9 @@ elseif strcmp(experiment, 'identification')
     
 end
 
-%transf_lists_all = { {1, 1:Ntransfs} {2, 1:Ntransfs} {3, 1:Ntransfs} {4, 1:Ntransfs} {5, 1:Ntransfs}};
+transf_lists_all = { {1, 1:Ntransfs} {2, 1:Ntransfs} {3, 1:Ntransfs} {4, 1:Ntransfs} {5, 1:Ntransfs}};
 %transf_lists_all = { {5, 1:Ntransfs} {4:5, 1:Ntransfs} {[2 4:5], 1:Ntransfs} {2:5, 1:Ntransfs} {1:Ntransfs, 1:Ntransfs} };
-transf_lists_all = { {5, 5} };
+%transf_lists_all = { {5, 5} };
 
 day_mappings_all = { {1, 1:2} };
 day_lists_all = cell(length(day_mappings_all),1);
