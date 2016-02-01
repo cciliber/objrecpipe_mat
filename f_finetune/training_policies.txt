@@ -1,0 +1,24 @@
+fixed: always return base_lr
+
+step: return base_lr * gamma ^ (floor(iter / stepsize))
+gamma:
+stepsize:
+
+multistep: similar to step but it allows non uniform steps defined by stepvalue
+gamma:
+stepvalue:
+
+exp: return base_lr * gamma ^ iter
+gamma:
+
+inv: return base_lr * (1 + gamma * iter) ^ (- power)
+gamma:
+power:
+
+poly: polynomial decay to be zero by the max_iter, return base_lr (1 - iter/max_iter) ^ (power)
+power:
+
+sigmoid: sigmod decay to be zero by the max_iter, return base_lr ( 1/(1 + exp(-gamma * (iter - stepsize))))
+gamma:
+stepsize:
+

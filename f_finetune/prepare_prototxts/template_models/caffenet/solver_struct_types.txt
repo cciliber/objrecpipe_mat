@@ -1,14 +1,10 @@
-net: "%s"
+net: %q
 test_iter: %d
 test_interval: %d
 base_lr: %f
-lr_policy: "step"
 gamma: %f
 stepsize: %d
 display: %d
 max_iter: %d
-momentum: 0.9
-weight_decay: 0.0005
 snapshot: %d
-snapshot_prefix: "%s"
-solver_mode: GPU
+snapshot_prefix: %q
