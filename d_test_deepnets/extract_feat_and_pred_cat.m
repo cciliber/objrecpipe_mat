@@ -1,0 +1,544 @@
+
+clear all;
+
+FEATURES_DIR = '/data/giulia/REPOS/objrecpipe_mat';
+addpath(genpath(FEATURES_DIR));
+
+%% Global data dir
+
+DATA_DIR = '/data/giulia/ICUBWORLD_ULTIMATE';
+
+%% Dataset info
+
+dset_info = fullfile(DATA_DIR, 'iCubWorldUltimate_registries/info/iCubWorldUltimate.txt');
+dset_name = 'iCubWorldUltimate';
+
+opts = ICUBWORLDinit(dset_info);
+cat_names = keys(opts.Cat)';
+%obj_names = keys(opts.Obj)';
+transf_names = keys(opts.Transfs)';
+day_names = keys(opts.Days)';
+camera_names = keys(opts.Cameras)';
+
+Ncat = opts.Cat.Count;
+Nobj = opts.Obj.Count;
+NobjPerCat = opts.ObjPerCat;
+Ntransfs = opts.Transfs.Count;
+Ndays = opts.Days.Count;
+Ncameras = opts.Cameras.Count;
+
+%% Setup the question
+question_dir = '';
+%question_dir = 'frameORtransf';
+%question_dir = 'frameORinst';
+
+%whether the net is finetuned or not
+mapping = 'none';
+%mapping = 'tuned';
+
+% whether to use also the ImageNet labels
+if strcmp(mapping, 'none')
+    use_imnetlabels = true;
+elseif strcmp(mapping, 'tuned')
+    use_imnetlabels = false;
+end
+
+%% Setup the IO root directories
+
+% input images
+%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid384_disp_finaltree');
+%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb60_disp_finaltree');
+dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid256_disp_finaltree');
+%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb30_disp_finaltree');
+
+% input registries
+input_dir_regtxt_root = fullfile(DATA_DIR, 'iCubWorldUltimate_registries', 'categorization');
+check_input_dir(input_dir_regtxt_root);
+
+% output root
+exp_dir = fullfile([dset_dir '_experiments'], mapping);
+
+% output predictions
+output_dir_root_y = fullfile(exp_dir, 'predictions', 'categorization');
+check_output_dir(output_dir_root_y);
+
+%% Set up the trials
+
+% categories
+%cat_idx_all = { [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20] };
+cat_idx_all = { [3 8 9 11 12 13 14 15 19 20] };
+
+% objects per category
+obj_lists_all = { 1:NobjPerCat };
+
+% transformation
+transf_lists_all = { 1:5 };
+
+% day
+day_mappings_all = { 1 };
+create_day_list;
+
+% camera%
+camera_lists_all = { 1 };
+
+%% Caffe
+
+% general parameters
+caffe_dir = '/usr/local/src/robot/caffe';
+addpath(genpath(fullfile(caffe_dir, 'matlab')));
+caffe.set_mode_gpu();
+gpu_id = 0;
+caffe.set_device(gpu_id);
+
+% train or test
+phase = 'test';
+
+%% Caffe model
+
+model = 'caffenet';
+%model = 'googlenet_paper';
+%model = 'googlenet_caffe';
+%model = 'vgg16';
+
+if strcmp(model, 'caffenet')
+    
+    % net weights
+    model_dir = fullfile(caffe_dir, 'models/bvlc_reference_caffenet/');
+    caffepaths.net_weights = fullfile(model_dir, 'bvlc_reference_caffenet.caffemodel');
+    
+    % mean_data: mat file already in W x H x C with BGR channels
+    caffepaths.mean_path = fullfile(caffe_dir, 'matlab/+caffe/imagenet/ilsvrc_2012_mean.mat');
+    
+    CROP_SIZE = 227;
+    
+    % remember that actual caffe batch size is max_bsize*NCROPS !!!!
+    max_bsize = 50;
+    
+    % net definition
+    oversample = true;
+    if oversample
+        NCROPS = 10;
+    else
+        NCROPS=1;
+    end
+    caffepaths.net_model = fullfile(model_dir, 'deploy.prototxt');
+    
+    % features to extract
+    extract_features = true;
+    if extract_features
+        feat_names = {'fc6', 'fc7'};
+        nFeat = length(feat_names);
+    end
+    
+elseif strcmp(model, 'googlenet_caffe')
+    
+    % net weights
+    model_dir = fullfile(caffe_dir, 'models/bvlc_googlenet/');
+    caffepaths.net_weights = fullfile(model_dir, 'bvlc_googlenet.caffemodel');
+    
+    CROP_SIZE = 224;
+    
+    % remember that actual caffe batch size is max_batch_size*NCROPS !!!!
+    max_bsize = 512;
+    
+    % net definition
+    oversample = true;
+    if oversample
+        NCROPS = 10;
+    else
+        NCROPS=1;
+    end
+    caffepaths.net_model = fullfile(model_dir, 'deploy.prototxt');
+    
+    % features to extract
+    extract_features = false;
+    if extract_features
+        feat_names = [];
+        nFeat = length(feat_names);
+    end
+    
+elseif strcmp(model, 'googlenet_paper')
+    
+    % net weights
+    model_dir = fullfile(caffe_dir, 'models/bvlc_googlenet/');
+    caffepaths.net_weights = fullfile(model_dir, 'bvlc_googlenet.caffemodel');
+    
+    CROP_SIZE = 224;
+    
+    % whether to consider multiple scales
+    %SHORTER_SIDE = [256 288 320 352];
+    SHORTER_SIDE = 256;
+    
+    % whether to consider multiple crops
+    %GRID = '3-2';
+    %GRID = '1-2';
+    %GRID = '3-1';
+    GRID='1x1';
+    %GRID = '5x5';
+    
+    %% assign number of total crops per image
+    grid1 = strsplit(GRID, '-');
+    grid2 = strsplit(GRID, 'x');
+    if length(grid1)>1
+        grid_side = str2num(grid1{1});
+        sub_grid_side = str2num(grid1{2});
+        if sub_grid_side>1
+            NCROPS = grid_side*(sub_grid_side*sub_grid_side+2)*2;
+        else
+            NCROPS = grid_side;
+        end
+    elseif length(grid2)>1
+        grid_side = str2num(grid2{1});
+        if grid_side>1
+            NCROPS = grid_side*grid_side*2;
+        else
+            NCROPS = 1;
+        end
+    end
+    NCROPS=NCROPS*length(SHORTER_SIDE);
+    
+    % remember that actual caffe batch size is max_batch_size*NCROPS !!!!
+    max_bsize = 2;
+    
+    caffepaths.net_model = fullfile(model_dir, 'deploy.prototxt');
+    
+    % features to extract
+    extract_features = false;
+    if extract_features
+        feat_names = [];
+        nFeat = length(feat_names);
+    end
+    
+elseif strcmp(model, 'vgg16')
+    
+    % net weights
+    model_dir = fullfile(caffe_dir, 'models/VGG/VGG_ILSVRC_16');
+    caffepaths.net_weights = fullfile(model_dir, 'VGG_ILSVRC_16_layers.caffemodel');
+    
+    CROP_SIZE = 224;
+    
+    % whether to consider multiple scales
+    %SHORTER_SIDE = [256 384 512];
+    SHORTER_SIDE = 384;
+    
+    % whether to consider multiple crops
+    %GRID = '3-2';
+    %GRID = '1-2';
+    %GRID = '3-1';
+    %GRID='1x1';
+    GRID = '5x5';
+    
+    %% assign number of total crops per image
+    grid1 = strsplit(GRID, '-');
+    grid2 = strsplit(GRID, 'x');
+    if length(grid1)>1
+        grid_side = str2num(grid1{1});
+        sub_grid_side = str2num(grid1{2});
+        if sub_grid_side>1
+            NCROPS = grid_side*(sub_grid_side*sub_grid_side+2)*2;
+        else
+            NCROPS = grid_side;
+        end
+    elseif length(grid2)>1
+        grid_side = str2num(grid2{1});
+        NCROPS = grid_side*grid_side*2;
+    end
+    NCROPS=NCROPS*length(SHORTER_SIDE);
+    
+    % remember that actual caffe batch size is max_batch_size*NCROPS !!!!
+    max_bsize = 2;
+    
+    caffepaths.net_model = fullfile(model_dir, 'VGG_ILSVRC_16_layers_deploy.prototxt');
+    
+    % features to extract
+    extract_features = true;
+    if extract_features
+        feat_names = {'fc6', 'fc7'};
+        nFeat = length(feat_names);
+    end
+    
+end
+
+%% Caffe net init
+
+% init network
+net = caffe.Net(caffepaths.net_model, caffepaths.net_weights, phase);
+
+% reshape according to batch size
+inputshape = net.blobs('data').shape();
+bsize_net = inputshape(4);
+if max_bsize*NCROPS ~= bsize_net
+    net.blobs('data').reshape([CROP_SIZE CROP_SIZE 3 max_bsize*NCROPS])
+    net.reshape() % optional: the net reshapes automatically before a call to forward()
+end
+
+% load mean
+if strcmp(model, 'caffenet') && strcmp(mapping, 'none')
+    d = load(caffepaths.mean_path);
+    mean_data = d.mean_data;
+elseif strncmp(model, 'googlenet', length('googlenet')) && strcmp(mapping, 'none')
+    mean_data = [104 117 123];
+elseif strcmp(model, 'vgg16') && strcmp(mapping, 'none')
+    mean_data = [103.939 116.779 123.68];
+end
+
+%% For each experiment, go!
+
+for icat=1:length(cat_idx_all)
+    
+    cat_idx = cat_idx_all{icat};
+    
+    for iobj=1:length(obj_lists_all)
+        
+        obj_list = obj_lists_all{iobj};
+        
+        for itransf=1:length(transf_lists_all)
+            
+            transf_list = transf_lists_all{itransf};
+            
+            for iday=1:length(day_lists_all)
+                
+                day_list = day_lists_all{iday};
+                day_mapping = day_mappings_all{iday};
+                
+                for icam=1:length(camera_lists_all)
+                    
+                    camera_list = camera_lists_all{icam};
+                    
+                    %% Assign IO directories
+                    
+                    dir_regtxt_relative = fullfile(['Ncat_' num2str(length(cat_idx))], strrep(strrep(num2str(cat_idx), '   ', '-'), '  ', '-'));
+                    dir_regtxt_relative = fullfile(dir_regtxt_relative, question_dir);
+                    
+                    input_dir_regtxt = fullfile(input_dir_regtxt_root, dir_regtxt_relative);
+                    check_input_dir(input_dir_regtxt);
+                    
+                    output_dir_y = fullfile(output_dir_root_y, model, dir_regtxt_relative);
+                    check_output_dir(output_dir_y);
+                                      
+                    if extract_features
+                        output_dir_root_fc = fullfile(exp_dir, 'scores', model);
+                        check_output_dir(output_dir_root_fc);
+                    end
+
+                    %% Set scores to be selected
+                    
+                    sel_idxs = cell2mat(values(opts.Cat_ImnetLabels));
+                    sel_idxs = sel_idxs(cat_idx)+1;
+                    % check against number of output units
+                    score_length = net.blobs('prob').shape();
+                    score_length = score_length(1);
+                    if sum(sel_idxs>score_length)
+                        error('You are selecting scores out of net range!');
+                    end
+                    
+                    %% Create the set name
+                    set_name = [strrep(strrep(num2str(obj_list), '   ', '-'), '  ', '-') ...
+                        '_tr_' strrep(strrep(num2str(transf_list), '   ', '-'), '  ', '-') ...
+                        '_day_' strrep(strrep(num2str(day_mapping), '   ', '-'), '  ', '-') ...
+                        '_cam_' strrep(strrep(num2str(camera_list), '   ', '-'), '  ', '-')];
+                    
+                    %% Load the registry and Y (true labels)
+                    input_registry = textscan(fullfile(input_dir_regtxt, ['Y_' set_name '.txt']), '%s %d'); 
+                    Y = input_registry{2};
+                    REG = input_registry{1};  
+                    if use_imnetlabels
+                        input_registry = textscan(fullfile(input_dir_regtxt, ['Yimnet_' set_name '.txt']), '%s %d'); 
+                        Yimnet = input_registry{2};
+                    end
+                    clear input_registry;
+                    
+                    %% Extract scores (+ features) and compute predictions
+              
+                    Ypred_avg = cell(Ncat,1);
+                    if strcmp(mapping, 'none')
+                        Ypred_avg_sel = cell(Ncat,1);
+                    end
+                    if strcmp(model, 'caffenet') && strcmp(mapping, 'none') && oversample
+                        Ypred_central = cell(Ncat,1);
+                        if strcmp(mapping, 'none')
+                            Ypred_central_sel = cell(Ncat,1);
+                        end
+                    end
+                    NframesPerCat = cell(Ncat, 1);
+                    
+                    for cc=cat_idx
+                        
+                        NframesPerCat{opts.Cat(cat_names{cc})} = length(REG{opts.Cat(cat_names{cc})});
+                        Ypred_avg{opts.Cat(cat_names{cc})} = zeros(NframesPerCat{opts.Cat(cat_names{cc})}, 1);
+                        if strcmp(mapping, 'none')
+                            Ypred_avg_sel{opts.Cat(cat_names{cc})} = zeros(NframesPerCat{opts.Cat(cat_names{cc})}, 1);
+                        end
+                        if strcmp(model, 'caffenet') && strcmp(mapping, 'none') && oversample
+                            Ypred_central{opts.Cat(cat_names{cc})} = zeros(NframesPerCat{opts.Cat(cat_names{cc})}, 1);
+                            if strcmp(mapping, 'none')
+                                Ypred_central_sel{opts.Cat(cat_names{cc})} = zeros(NframesPerCat{opts.Cat(cat_names{cc})}, 1);
+                            end
+                        end
+                        
+                        bsize = min(max_bsize, NframesPerCat{opts.Cat(cat_names{cc})});
+                        Nbatches = ceil(NframesPerCat{opts.Cat(cat_names{cc})}/bsize);
+                        
+                        for bidx=1:Nbatches
+                            
+                            %tic
+                            
+                            bstart = (bidx-1)*bsize+1;
+                            bend = min(bidx*bsize, NframesPerCat{opts.Cat(cat_names{cc})});
+                            bsize_curr = bend-bstart+1;
+                            
+                            inputshape = net.blobs('data').shape();
+                            bsize_net = inputshape(4);
+                            if bsize_curr*NCROPS ~= bsize_net
+                                net.blobs('data').reshape([CROP_SIZE CROP_SIZE 3 bsize_curr*NCROPS])
+                                net.reshape() % optional: the net reshapes automatically before a call to forward()
+                            end
+                            
+                            % load images and preprocess one by one
+                            input_data = zeros(CROP_SIZE,CROP_SIZE,3,bsize_curr*NCROPS, 'single');
+                            for imidx=1:bsize_curr
+                                im = imread(fullfile(dset_dir, cat_names{cc}, [REG{opts.Cat(cat_names{cc})}{bstart+imidx-1}(1:(end-4)) '.jpg']));
+                                
+                                if (strcmp(model, 'caffenet') || strcmp(model, 'googlenet')) && strcmp(mapping, 'none')
+                                    input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image_caffe(im, mean_data, CROP_SIZE, oversample);
+                                elseif strcmp(model, 'vgg16') && strcmp(mapping, 'none')
+                                    input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image_multiscalecrop(im, mean_data, CROP_SIZE, SHORTER_SIDE, GRID);
+                                end
+                                
+                            end
+                            
+                            % extract scores in batches
+                            scores = net.forward({input_data});
+                            scores = scores{1};
+
+                            % extract features in batches
+                            if extract_features
+                                feat = cell(nFeat,1);
+                                for ff=1:nFeat
+                                    feat{ff} = net.blobs(feat_names{ff}).get_data();
+                                end
+                            end
+
+                            % reshape, dividing scores per image
+                            scores = reshape(scores, [], NCROPS, bsize_curr);
+                            
+                            % reshape, dividing features per image
+                            if extract_features
+                                for ff=1:nFeat
+                                    feat{ff} = reshape(feat{ff}, [], NCROPS, bsize_curr);
+                                end
+                            end
+                            
+                            % take average score over crops
+                            % if single crop, avg_scores == scores
+                            avg_scores = squeeze(mean(scores, 2));
+                            if strcmp(mapping, 'none')
+                                % select          
+                                avg_scores_sel = avg_scores(sel_idxs, :);
+                            end
+                            
+                            % take central score over crops
+                            if strcmp(model, 'caffenet') && strcmp(mapping, 'none') && oversample
+                                central_scores = squeeze(scores(:,5,:));
+                            end
+                            if strcmp(mapping, 'none')
+                                % select 
+                                central_scores_sel = central_scores(sel_idxs, :);
+                            end
+                            
+                            % max 
+                            [~, maxlabel_avg] = max(avg_scores);
+                            maxlabel_avg = maxlabel_avg - 1;
+                            
+                            if strcmp(mapping, 'none')
+                                % max 
+                                [~, maxlabel_avg_sel] = max(avg_scores_sel);
+                                maxlabel_avg_sel = maxlabel_avg_sel - 1;
+                            end
+                            
+                            if strcmp(model, 'caffenet') && strcmp(mapping, 'none') && oversample
+                                % max
+                                [~, maxlabel_central] = max(central_scores);
+                                maxlabel_central = maxlabel_central - 1;
+                                if strcmp(mapping, 'none')
+                                    % max
+                                    [~, maxlabel_central_sel] = max(central_scores_sel);
+                                    maxlabel_central_sel = maxlabel_central_sel - 1;
+                                end
+                            end
+                            
+                            % save extracted features
+                            if extract_features
+                                for imidx=1:bsize_curr
+                                    for ff=1:nFeat
+                                        fc = squeeze(feat{ff}(:,:,imidx));
+                                        outpath = fullfile(output_dir_root_fc, feat_names{ff}, cat_names{cc}, fileparts(REG{opts.Cat(cat_names{cc})}{bstart+imidx-1}));
+                                        check_output_dir(outpath);
+                                        save(fullfile(output_dir_root_fc, feat_names{ff}, cat_names{cc}, [REG{opts.Cat(cat_names{cc})}{bstart+imidx-1}(1:(end-4)) '.mat']), 'fc');
+                                    end
+                                end
+                            end
+                            
+                            % store all predictions in Y
+                            Ypred_avg{opts.Cat(cat_names{cc})}(bstart:bend) = maxlabel_avg;
+                            if strcmp(mapping, 'none')
+                                Ypred_avg_sel{opts.Cat(cat_names{cc})}(bstart:bend) = maxlabel_avg_sel;
+                            end
+                            if strcmp(model, 'caffenet') && strcmp(mapping, 'none') && oversample
+                                Ypred_central{opts.Cat(cat_names{cc})}(bstart:bend) = maxlabel_central;
+                                if strcmp(mapping, 'none')
+                                    Ypred_central_sel{opts.Cat(cat_names{cc})}(bstart:bend) = maxlabel_central_sel;
+                                end
+                            end
+                            
+                            %toc
+                            fprintf('%s: batch %d out of %d \n', cat_names{cc}, bidx, Nbatches);
+                        end
+                        
+                    end
+                    
+                    % compute accuracy and save everything
+                    Ypred = Ypred_avg;
+                    [acc, C] = trace_confusion(cell2mat(Yimnet)+1, cell2mat(Ypred)+1, score_length);
+                    if strcmp(mapping, 'tuned')
+                        save(fullfile(output_dir_y, ['Yavg_' mapping '_' set_names_prefix{iset} cell2mat(strcat('_', set_names(:))') '.mat'] ), 'Ypred', 'acc', 'C', '-v7.3');
+                    elseif strcmp(mapping, 'none')
+                        save(fullfile(output_dir_y, ['Yavg_' mapping '_' set_names{iset}((length(set_names_prefix{iset})+1):end) '.mat'] ), 'Ypred', 'acc', 'C', '-v7.3');
+                    end
+                    if strcmp(mapping, 'none')
+                        Ypred = Ypred_avg_sel;
+                        [acc, C] = trace_confusion(cell2mat(Y)+1, cell2mat(Ypred)+1, length(cat_idx));
+                        if strcmp(mapping, 'tuned')
+                            save(fullfile(output_dir_y, ['Yavgsel_' mapping '_' set_names_prefix{iset} cell2mat(strcat('_', set_names(:))') '.mat'] ), 'Ypred', 'acc', 'C', '-v7.3');
+                        elseif strcmp(mapping, 'none')
+                            save(fullfile(output_dir_y, ['Yavgsel_' mapping '_' set_names{iset}((length(set_names_prefix{iset})+1):end) '.mat'] ), 'Ypred', 'acc', 'C', '-v7.3');
+                        end
+                    end
+                    if strcmp(model, 'caffenet') && strcmp(mapping, 'none') && oversample
+                        Ypred = Ypred_central;
+                        [acc, C] = trace_confusion(cell2mat(Yimnet), cell2mat(Ypred));
+                        if strcmp(mapping, 'tuned')
+                            save(fullfile(output_dir_y, ['Ycentral_' mapping '_' set_names_prefix{iset} cell2mat(strcat('_', set_names(:))') '.mat'] ), 'Ypred', 'acc', 'C', '-v7.3');
+                        elseif strcmp(mapping, 'none')
+                            save(fullfile(output_dir_y, ['Ycentral_' mapping '_' set_names{iset}((length(set_names_prefix{iset})+1):end) '.mat'] ), 'Ypred', 'acc', 'C', '-v7.3');
+                        end
+                        if strcmp(mapping, 'none')
+                            Ypred = Ypred_central_sel;
+                            [acc, C] = trace_confusion(cell2mat(Y), cell2mat(Ypred));
+                            if strcmp(mapping, 'tuned')
+                                save(fullfile(output_dir_y, ['Ycentralsel_' mapping '_' set_names_prefix{iset} cell2mat(strcat('_', set_names(:))') '.mat'] ), 'Ypred', 'acc', 'C', '-v7.3');
+                            elseif strcmp(mapping, 'none')
+                                save(fullfile(output_dir_y, ['Ycentralsel_' mapping '_' set_names{iset}((length(set_names_prefix{iset})+1):end) '.mat'] ), 'Ypred', 'acc', 'C', '-v7.3');
+                            end
+                        end
+                    end
+                    
+                    
+                end
+            end
+        end
+    end
+end
+
+caffe.reset_all();
+

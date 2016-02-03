@@ -1,24 +1,17 @@
 clear all;
-
-%%
-
-create_fullpath = false;
-setup_code_and_data(create_fullpath);
-
+setup_code_and_data;
 
 %% Setup the question
 
-% experiment kind
-experiment = 'categorization';
-%experiment = 'identification';
-
-% question
-same_size = true;
+same_size = false;
 if same_size == true
     %question_dir = 'frameORtransf';
     question_dir = 'frameORinst';
     
 end
+
+% whether to create the ImageNet labels
+create_imnetlabels = true;
 
 %% Setup the IO root directories
 
@@ -27,53 +20,29 @@ reg_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_registries/full_registries');
 check_input_dir(reg_dir);
 
 % output root dir for registries of the subsets
-output_dir_regtxt_root = fullfile(DATA_DIR, 'iCubWorldUltimate_registries', experiment);
+output_dir_regtxt_root = fullfile(DATA_DIR, 'iCubWorldUltimate_registries', 'identification');
 if create_fullpath
-    output_dir_regtxt_root_fullpath = fullfile([dset_dir '_experiments'], 'registries', experiment);
+    output_dir_regtxt_root_fullpath = fullfile([dset_dir '_experiments'], 'registries', 'identification');
 end
 
 %% Set up the trials
 
-% Default sets that are created
 
-set_names_prefix = {'train_', 'val_', 'test_'};
-Nsets = length(set_names_prefix);
-
-% Whether to create the ImageNet labels
-
-if strcmp(experiment, 'categorization')
-    create_imnetlabels = true;
-else
-    create_imnetlabels = [];
-end
-
-% Choose categories
-
+% categories
 cat_idx_all = {[2 3 4 5 6 7 8 9 11 12 13 14 15 19 20]};
 
-% Choose objects per category
+
+% sets
+set_names_prefix = {'test_'};
+Nsets = length(set_names_prefix);
+
+
+% objects per category
 
 if strcmp(experiment, 'categorization')
     
-    Ntest = 1;
-    Nval = 1;
-    Ntrain = NobjPerCat - Ntest - Nval;
-    
-    obj_lists_all = cell(Ntrain, 1);
-    
-    p = randperm(NobjPerCat);
+    obj_lists_all = { {1:NobjPerCat} };
 
-    for oo=1:Ntrain
-        
-        obj_lists_all{oo} = cell(Nsets,1);
-        
-        obj_lists_all{oo}{3} = p(1:Ntest);
-        obj_lists_all{oo}{2} = p((Ntest+1):(Ntest+Nval));
-        
-        obj_lists_all{oo}{1} = p((Ntest+Nval+1):(Ntest+Nval+oo));
-        
-    end
-    
 elseif strcmp(experiment, 'identification')
     
     id_exps = {1:3, 1:5, 1:7, 1:10};
@@ -86,11 +55,11 @@ end
 
 % Choose transformation
 
-transf_lists_all = { {1:5, 1:5, 1:5} };
+transf_lists_all = { {1:5} };
 
 % Choose day
 
-day_mappings_all = { {1, 1, 1:2} };
+day_mappings_all = { {1}, {2}, {1:2} };
 day_lists_all = cell(length(day_mappings_all),1);
 
 for ee=1:length(day_mappings_all)
@@ -113,7 +82,7 @@ end
 
 % Choose camera
 
-camera_lists_all = { {1, 1, 1:2} };
+camera_lists_all = { {1}, {2}, {1:2} };
 
 % Choose validation percentage
 
@@ -125,7 +94,6 @@ if strcmp(experiment, 'identification')
 else
     divide_trainval_perc = [];
 end
-
 if strcmp(experiment, 'identification') && divide_trainval_perc==true
     validation_perc = 0.5;
     validation_step = 1/validation_perc;
@@ -136,13 +104,13 @@ end
 
 %% Save metadata of this experiment
 
-trial.cat_idx_all = cat_idx_all;
-trial.obj_lists_all = obj_lists_all;
-trial.transf_lists_all = transf_lists_all;
-trial.day_mappings_all = day_mappings_all;
-trial.camera_lists_all = camera_lists_all;
-
-save(fullpath(output_dir_regtxt_root_fullpath, 'trial.mat'), 'trial', '-v7.3');
+% trial.cat_idx_all = cat_idx_all;
+% trial.obj_lists_all = obj_lists_all;
+% trial.transf_lists_all = transf_lists_all;
+% trial.day_mappings_all = day_mappings_all;
+% trial.camera_lists_all = camera_lists_all;
+% 
+% save(fullpath(output_dir_regtxt_root_fullpath, 'trial.mat'), 'trial', '-v7.3');
 
 %% For each experiment, go!
 
@@ -220,7 +188,7 @@ for icat=1:length(cat_idx_all)
                     % Create the set names
                     
                     for ii=1:Nsets
-                        set_names{ii} = [set_names_prefix{ii} strrep(strrep(num2str(obj_lists{ii}), '   ', '-'), '  ', '-')];
+                        set_names{ii} = strrep(strrep(num2str(obj_lists{ii}), '   ', '-'), '  ', '-');
                         set_names{ii} = [set_names{ii} '_tr_' strrep(strrep(num2str(transf_lists{ii}), '   ', '-'), '  ', '-')];
                         set_names{ii} = [set_names{ii} '_cam_' strrep(strrep(num2str(camera_lists{ii}), '   ', '-'), '  ', '-')];
                         set_names{ii} = [set_names{ii} '_day_' strrep(strrep(num2str(day_mappings{ii}), '   ', '-'), '  ', '-')];

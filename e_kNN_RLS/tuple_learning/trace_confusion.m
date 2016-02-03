@@ -1,4 +1,4 @@
-function [accuracy,confus] = trace_confusion(Ytrue,Ypred)
+function [accuracy,confus] = trace_confusion(Ytrue, Ypred, T)
 
     if size(Ytrue,2)>1
         [~,Ytrue]=max(Ytrue,[],2); 

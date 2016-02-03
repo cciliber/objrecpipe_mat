@@ -1,7 +1,4 @@
-function crops_data = prepare_image_caffenet(im, mean_data, oversample)
-
-MEAN_DIM = 256;
-CROPPED_DIM = 227;
+function crops_data = prepare_image_caffe(im, mean_data, CROPPED_DIM, oversample)
 
 % Convert an image returned by Matlab's imread to im_data in caffe's data
 % format: W x H x C with BGR channels
@@ -11,11 +8,28 @@ im_data = single(im_data);  % convert from uint8 to single
 
 IMAGE_DIM = size(im_data);
 
-if ~isequal(IMAGE_DIM(1:2),MEAN_DIM)
-    im_data = imresize(im_data, [MEAN_DIM MEAN_DIM], 'bilinear');  % resize im_data
+if isequal(size(mean_data(:)), [3 1]) 
+    
+    MEAN_DIM = 256;
+    if ~isequal(IMAGE_DIM(1:2), [MEAN_DIM MEAN_DIM])
+        im_data = imresize(im_data, [MEAN_DIM MEAN_DIM], 'bilinear');
+    end
+    for ii=1:3
+        im_data(:,:,ii) = im_data(:,:,ii) - mean_data(ii);
+    end
+    
+else
+    
+    MEAN_DIM = size(mean_data,1);
+    if MEAN_DIM~=size(mean_data,2)
+        error('mean_data is not squared!');
+    end
+    if ~isequal(IMAGE_DIM(1:2), [MEAN_DIM MEAN_DIM])
+        im_data = imresize(im_data, [MEAN_DIM MEAN_DIM], 'bilinear');
+    end
+    im_data = im_data - mean_data;  % subtract mean_data (already in W x H x C, BGR)
+    
 end
-
-im_data = im_data - mean_data;  % subtract mean_data (already in W x H x C, BGR)
 
 indices = [0 MEAN_DIM-CROPPED_DIM] + 1;
 

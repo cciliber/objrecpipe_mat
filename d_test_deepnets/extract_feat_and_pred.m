@@ -165,11 +165,11 @@ if strcmp(model, 'caffenet') && strcmp(mapping, 'none')
     
     CROP_SIZE = 227;
     
-    % remember that actual caffe batch size is max_batch_size*NCROPS !!!!
+    % remember that actual caffe batch size is max_bsize*NCROPS !!!!
     max_bsize = 512;
     
     % net definition
-    oversample = false;
+    oversample = true;
     if oversample
         NCROPS = 10;
     else
@@ -180,8 +180,7 @@ if strcmp(model, 'caffenet') && strcmp(mapping, 'none')
     % features to extract
     extract_features = true;
     if extract_features
-        feat_names = {'fc6'};
-        %feat_names = {'fc6', 'fc7' ,'fc8'};
+        feat_names = {'fc6', 'fc7'};
         nFeat = length(feat_names);
     end
     
@@ -193,41 +192,48 @@ elseif strcmp(model, 'googlenet') && strcmp(mapping, 'none')
     
     CROP_SIZE = 224;
     
-    % whether to consider multiple scales
-    %SHORTER_SIDE = [256 288 320 352];
-    SHORTER_SIDE = 256;
-    
-    % whether to consider multiple crops
-    %GRID = '3-2';
-    %GRID = '1-2';
-    %GRID = '3-1';
-    GRID='1x1';
-    %GRID = '5x5';
-    
-    %% assign number of total crops per image
-    grid1 = strsplit(GRID, '-');
-    grid2 = strsplit(GRID, 'x');
-    if length(grid1)>1
-        grid_side = str2num(grid1{1});
-        sub_grid_side = str2num(grid1{2});
-        if sub_grid_side>1
-            NCROPS = grid_side*(sub_grid_side*sub_grid_side+2)*2;
-        else
-            NCROPS = grid_side;
-        end
-    elseif length(grid2)>1
-        grid_side = str2num(grid2{1});
-        if grid_side>1
-            NCROPS = grid_side*grid_side*2;
-        else
-            NCROPS = 1;
-        end
-    end
-    NCROPS=NCROPS*length(SHORTER_SIDE);
+%     % whether to consider multiple scales
+%     %SHORTER_SIDE = [256 288 320 352];
+%     SHORTER_SIDE = 256;
+%     
+%     % whether to consider multiple crops
+%     %GRID = '3-2';
+%     %GRID = '1-2';
+%     %GRID = '3-1';
+%     GRID='1x1';
+%     %GRID = '5x5';
+%     
+%     %% assign number of total crops per image
+%     grid1 = strsplit(GRID, '-');
+%     grid2 = strsplit(GRID, 'x');
+%     if length(grid1)>1
+%         grid_side = str2num(grid1{1});
+%         sub_grid_side = str2num(grid1{2});
+%         if sub_grid_side>1
+%             NCROPS = grid_side*(sub_grid_side*sub_grid_side+2)*2;
+%         else
+%             NCROPS = grid_side;
+%         end
+%     elseif length(grid2)>1
+%         grid_side = str2num(grid2{1});
+%         if grid_side>1
+%             NCROPS = grid_side*grid_side*2;
+%         else
+%             NCROPS = 1;
+%         end
+%     end
+%     NCROPS=NCROPS*length(SHORTER_SIDE);
     
     % remember that actual caffe batch size is max_batch_size*NCROPS !!!!
-    max_bsize = 10;
+    max_bsize = 512;
     
+    % net definition
+    oversample = true;
+    if oversample
+        NCROPS = 10;
+    else
+        NCROPS=1;
+    end
     caffepaths.net_model = fullfile(model_dir, 'deploy.prototxt');
     
     % features to extract
@@ -246,8 +252,8 @@ elseif strcmp(model, 'vgg16') && strcmp(mapping, 'none')
     CROP_SIZE = 224;
     
     % whether to consider multiple scales
-    %SHORTER_SIDE = [256 288 320 352];
-    SHORTER_SIDE = 256;
+    %SHORTER_SIDE = [256 384 512];
+    SHORTER_SIDE = 384;
     
     % whether to consider multiple crops
     %GRID = '3-2';
@@ -424,13 +430,19 @@ for icat=1:length(cat_idx_all)
                         
                         %% Extract scores (+ features) and compute predictions
                         
-                        Ypred = cell(Ncat,1);
+                        Ypred_avg = cell(Ncat,1);
+                        if strcmp(model, 'caffenet') && strcmp(mapping, 'none') && oversample
+                            Ypred_central = cell(Ncat,1);
+                        end
                         NframesPerCat = cell(Ncat, 1);
                         
                         for cc=cat_idx
                             
                             NframesPerCat{opts.Cat(cat_names{cc})} = length(REG{opts.Cat(cat_names{cc})});
-                            Ypred{opts.Cat(cat_names{cc})} = zeros(NframesPerCat{opts.Cat(cat_names{cc})}, 1);
+                            Ypred_avg{opts.Cat(cat_names{cc})} = zeros(NframesPerCat{opts.Cat(cat_names{cc})}, 1);
+                            if strcmp(model, 'caffenet') && strcmp(mapping, 'none') && oversample
+                                Ypred_central{opts.Cat(cat_names{cc})} = zeros(NframesPerCat{opts.Cat(cat_names{cc})}, 1);
+                            end
                             
                             bsize = min(max_bsize, NframesPerCat{opts.Cat(cat_names{cc})});
                             Nbatches = ceil(NframesPerCat{opts.Cat(cat_names{cc})}/bsize);
@@ -455,9 +467,9 @@ for icat=1:length(cat_idx_all)
                                 for imidx=1:bsize_curr
                                     im = imread(fullfile(dset_dir, cat_names{cc}, [REG{opts.Cat(cat_names{cc})}{bstart+imidx-1}(1:(end-4)) '.jpg']));
                                     
-                                    if strcmp(model, 'caffenet') && strcmp(mapping, 'none')
-                                        input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image_caffenet(im, mean_data, oversample);
-                                    elseif ( strcmp(model, 'googlenet') || strcmp(model, 'vgg16') ) && strcmp(mapping, 'none')
+                                    if (strcmp(model, 'caffenet') || strcmp(model, 'googlenet')) && strcmp(mapping, 'none')
+                                        input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image_caffe(im, mean_data, CROP_SIZE, oversample);
+                                    elseif strcmp(model, 'vgg16') && strcmp(mapping, 'none')
                                         input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image_multiscalecrop(im, mean_data, CROP_SIZE, SHORTER_SIDE, GRID);
                                     end
                                     
@@ -487,12 +499,18 @@ for icat=1:length(cat_idx_all)
                                     end
                                 end
                                 
-                                % take average scores over crops
-                                scores = squeeze(mean(scores, 2));
+                                % take average score over crops and max
+                                % if single crop, avg_scores == scores
+                                avg_scores = squeeze(mean(scores, 2));
+                                [~, maxlabel_avg] = max(avg_scores);
+                                maxlabel_avg = maxlabel_avg - 1;
                                 
-                                % compute max score per image
-                                [~, maxlabel] = max(scores);
-                                maxlabel = maxlabel - 1;
+                                % take central crop and max
+                                if strcmp(model, 'caffenet') && strcmp(mapping, 'none') && oversample
+                                    central_scores = squeeze(scores(:,5,:));
+                                    [~, maxlabel_central] = max(central_scores);
+                                    maxlabel_central = maxlabel_central - 1;
+                                end
                                 
                                 % save extracted features
                                 if extract_features
@@ -507,7 +525,10 @@ for icat=1:length(cat_idx_all)
                                 end
                                 
                                 % store all predictions in Y
-                                Ypred{opts.Cat(cat_names{cc})}(bstart:bend) = maxlabel;
+                                Ypred_avg{opts.Cat(cat_names{cc})}(bstart:bend) = maxlabel_avg;
+                                if strcmp(model, 'caffenet') && strcmp(mapping, 'none') && oversample
+                                    Ypred_central{opts.Cat(cat_names{cc})}(bstart:bend) = maxlabel_central;
+                                end
                                 
                                 %toc
                                 fprintf('%s: batch %d out of %d \n', cat_names{cc}, bidx, Nbatches);
@@ -515,15 +536,23 @@ for icat=1:length(cat_idx_all)
                             
                         end
                         
-                        % compute accuracy
-                        [acc, C] = trace_confusion(cell2mat(Y), cell2mat(Ypred));
-                        
+                        % compute accuracy and save everything   
+                        Ypred = Ypred_avg;
+                        [acc, C] = trace_confusion(cell2mat(Y), cell2mat(Ypred_avg));
                         if strcmp(mapping, 'tuned')                         
-                            save(fullfile(output_dir_y, ['Y_' mapping '_' set_names_prefix{iset} cell2mat(strcat('_', set_names(:))') '.mat'] ), 'Ypred', 'acc', 'C', '-v7.3');
+                            save(fullfile(output_dir_y, ['Yavg_' mapping '_' set_names_prefix{iset} cell2mat(strcat('_', set_names(:))') '.mat'] ), 'Ypred', 'acc', 'C', '-v7.3');
                         elseif strcmp(mapping, 'none') || strcmp(mapping, 'select')
-                            save(fullfile(output_dir_y, ['Y_' mapping '_' set_names{iset}((length(set_names_prefix{iset})+1):end) '.mat'] ), 'Ypred', 'acc', 'C', '-v7.3');
+                            save(fullfile(output_dir_y, ['Yavg_' mapping '_' set_names{iset}((length(set_names_prefix{iset})+1):end) '.mat'] ), 'Ypred', 'acc', 'C', '-v7.3');
                         end
-                        
+                        if strcmp(model, 'caffenet') && strcmp(mapping, 'none') && oversample
+                            Ypred = Ypred_central;
+                            [acc, C] = trace_confusion(cell2mat(Y), cell2mat(Ypred_central));
+                            if strcmp(mapping, 'tuned')
+                                save(fullfile(output_dir_y, ['Ycentral_' mapping '_' set_names_prefix{iset} cell2mat(strcat('_', set_names(:))') '.mat'] ), 'Ypred', 'acc', 'C', '-v7.3');
+                            elseif strcmp(mapping, 'none') || strcmp(mapping, 'select')
+                                save(fullfile(output_dir_y, ['Ycentral_' mapping '_' set_names{iset}((length(set_names_prefix{iset})+1):end) '.mat'] ), 'Ypred', 'acc', 'C', '-v7.3');
+                            end
+                        end
                     end
                 end
             end
