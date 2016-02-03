@@ -1,4 +1,4 @@
-function current_level = explore_next_level_folder(in_rootpath, exampleCount, registry, current_path, current_level, objects_list)
+function [exampleCount, registry, current_path,  current_level] = explore_next_level_folder(in_rootpath, exampleCount, registry, current_path, current_level, objects_list)
 
 if ischar(objects_list)
     objects_list = {objects_list};
@@ -22,7 +22,7 @@ for idx_file = 1:size(files)
             
             current_level(length(current_level)+1).name = files(idx_file).name;
             current_level(length(current_level)).subfolder = struct('name', {}, 'subfolder', {});
-            current_level(length(current_level)).subfolder = explore_next_level_folder(in_rootpath, current_path, current_level(length(current_level)).subfolder, objects_list);
+            [exampleCount, registry, ~, current_level(length(current_level)).subfolder] = explore_next_level_folder(in_rootpath, exampleCount, registry, current_path, current_level(length(current_level)).subfolder, objects_list);
             
             % fall back to the previous level
             current_path = tmp_path;

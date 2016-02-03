@@ -5,7 +5,7 @@ addpath(genpath(FEATURES_DIR));
 
 %% ImageNet synsets
 
-imnet_1000synsets_path = '/data/giulia/REPOS/caffe/data/ilsvrc12/synsets.txt';
+imnet_1000synsets_path = '/usr/local/src/robot/caffe/data/ilsvrc12/synsets.txt';
 fid = fopen(imnet_1000synsets_path);
 imnet_1000synsets = textscan(fid, '%s');
 imnet_1000synsets = imnet_1000synsets{1};
@@ -45,15 +45,11 @@ for cc=cat_list
         fprintf(2, 'Cannot open file: %s', out_path);
     end
     
-    loader = Features.GenericFeature();
-    loader.assign_registry_and_tree_from_folder(dset_path, cat_names{cc}, [], [], []);
+    registry = registry_from_folder(dset_path, cat_names{cc}, [], [], []);
     
-    %scores_dir = fullfile('/data/giulia/DATASETS/iCubWorldUltimate_bb_disp_finaltree_experiments/test_offtheshelfnets/scores/googlenet');    
-    %loader.reproduce_tree(scores_dir); 
-
-    [fpaths, fnames, fexts] = cellfun(@fileparts, loader.Registry, 'UniformOutput', false);
+    [fpaths, fnames, fexts] = cellfun(@fileparts, registry, 'UniformOutput', false);
     
-    loader.Registry(strcmp(fexts, '.txt')) = [];
+    registry(strcmp(fexts, '.txt')) = [];
     
     cat_synset = ICUBWORLDopts.Cat_ImnetWNIDs(cat_names{cc});
     if ~isempty(cat_synset)
@@ -63,8 +59,8 @@ for cc=cat_list
         Ylabel = -1;
     end
     
-    for line_idx=1:length(loader.Registry)
-        fprintf(fid, '%s\n', [loader.Registry{line_idx}(1:(end-4)) out_ext  ' ' num2str(Ylabel)]);
+    for line_idx=1:length(registry)
+        fprintf(fid, '%s\n', [registry{line_idx}(1:(end-4)) out_ext  ' ' num2str(Ylabel)]);
     end
     
     fclose(fid);

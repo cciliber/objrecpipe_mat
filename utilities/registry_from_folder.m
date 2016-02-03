@@ -1,11 +1,10 @@
-function [registry, Y] = registry_from_folder(in_rootpath, objlist, labelslist, out_registry_path, out_ext)
+function registry = registry_from_folder(in_rootpath, objlist, labelslist, out_registry_path, out_ext)
 
 check_input_dir(in_rootpath);
 
 % explore folders creating tree registry exampleCount
 tree = struct('name', {}, 'subfolder', {});
-registry = [];
-[~, registry] = explore_next_level_folder(in_rootpath, 0, [], '', tree, registry, objlist);
+[exampleCount, registry, ~,  ~] = explore_next_level_folder(in_rootpath, 0, [], '', tree, objlist);
 
 if ~isempty(labelslist)
     y = create_y(registry, labelslist, []);
@@ -22,7 +21,7 @@ if ~isempty(out_registry_path)
     if (fid==-1)
         fprintf(2, 'Cannot open file: %s', out_registry_path);
     end
-    for line_idx=1:length(registry)
+    for line_idx=1:exampleCount
         if isempty(out_ext) && isempty(labelslist)
             fprintf(fid, '%s\n', registry{line_idx});
         elseif isempty(labelslist)
