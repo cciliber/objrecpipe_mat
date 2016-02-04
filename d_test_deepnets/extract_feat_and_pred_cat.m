@@ -346,7 +346,11 @@ for icat=1:length(cat_idx_all)
                     input_dir_regtxt = fullfile(input_dir_regtxt_root, dir_regtxt_relative);
                     check_input_dir(input_dir_regtxt);
                     
-                    output_dir = fullfile(exp_dir, model, dir_regtxt_relative);
+                    if ~isempty(modality)
+                        output_dir = fullfile(exp_dir, model, dir_regtxt_relative);
+                    else
+                        output_dir = fullfile(exp_dir, model);
+                    end
                     check_output_dir(output_dir);
 
                     %% Set scores to be selected
