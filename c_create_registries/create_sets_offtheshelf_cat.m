@@ -71,13 +71,13 @@ obj_lists_all = { 1:NobjPerCat };
 transf_lists_all = { 1:5 };
 
 % day
-%day_mappings_all = { 1, 2, 1:2 };
-day_mappings_all = { 1:2 };
+day_mappings_all = { 1, 2, 1:2 };
+%day_mappings_all = { 1:2 };
 create_day_list;
 
 % camera
-%camera_lists_all = { 1, 2 };
-camera_lists_all = { 1:2 };
+camera_lists_all = { 1, 2 };
+%camera_lists_all = { 1:2 };
 
 %% For each experiment, go!
 
@@ -115,10 +115,12 @@ for icat=1:length(cat_idx_all)
         
         % create flist_splitted
         reg_path = fullfile(reg_dir, [cat_names{cc} '.txt']);
-        loader = Features.GenericFeature();
-        loader.assign_registry_and_tree_from_file(reg_path, [], []);
-        flist_splitted = regexp(loader.Registry, '/', 'split');
+        
+        fid = fopen(reg_path);
+        loader = textscan(fid, '%s %d');
+        flist_splitted = regexp(loader{1}, '/', 'split');
         clear loader;
+        fclose(fid); 
         flist_splitted = vertcat(flist_splitted{:});
         flist_splitted(:,1) = [];
         

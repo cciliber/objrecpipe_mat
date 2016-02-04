@@ -97,7 +97,7 @@ for ee=1:length(day_mappings_all)
     
     day_mappings = day_mappings_all{ee};
     
-    day_lists = cell(Nsets,1);
+    day_lists = cell(1,Nsets);
     tmp = keys(opts.Days);
     for ii=1:Nsets
         for dd=1:length(day_mappings{ii})

@@ -5,7 +5,6 @@ FEATURES_DIR = '/data/giulia/REPOS/objrecpipe_mat';
 addpath(genpath(FEATURES_DIR));
 
 %% Global data dir
-
 DATA_DIR = '/data/giulia/ICUBWORLD_ULTIMATE';
 
 %% Dataset info
@@ -27,19 +26,14 @@ Ntransfs = opts.Transfs.Count;
 Ndays = opts.Days.Count;
 Ncameras = opts.Cameras.Count;
 
-%% Setup the question
-question_dir = '';
-%question_dir = 'frameORtransf';
-%question_dir = 'frameORinst';
+%% Whether the net is finetuned or not
+mapping = '';
+%mapping = 'tuning';
 
-%whether the net is finetuned or not
-mapping = 'none';
-%mapping = 'tuned';
-
-% whether to use also the ImageNet labels
-if strcmp(mapping, 'none')
+%% Whether to use also the ImageNet labels
+if isempty(mapping)
     use_imnetlabels = true;
-elseif strcmp(mapping, 'tuned')
+else
     use_imnetlabels = false;
 end
 
@@ -56,30 +50,69 @@ input_dir_regtxt_root = fullfile(DATA_DIR, 'iCubWorldUltimate_registries', 'cate
 check_input_dir(input_dir_regtxt_root);
 
 % output root
-exp_dir = fullfile([dset_dir '_experiments'], mapping);
+exp_dir = fullfile([dset_dir '_experiments'], 'categorization');
+check_output_dir(exp_dir);
 
-% output predictions
-output_dir_root_y = fullfile(exp_dir, 'predictions', 'categorization');
-check_output_dir(output_dir_root_y);
+%% Setup the question
 
-%% Set up the trials
+question_dir = '';
+%question_dir = 'frameORtransf';
+%question_dir = 'frameORinst';
 
-% categories
+%% Categories
 %cat_idx_all = { [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20] };
 cat_idx_all = { [3 8 9 11 12 13 14 15 19 20] };
 
-% objects per category
-obj_lists_all = { 1:NobjPerCat };
+if ~isempty(mapping)
+    
+    %% Set up train, val and test sets
+    
+    % objects per category
+    Ntest = 1;
+    Nval = 1;
+    Ntrain = NobjPerCat - Ntest - Nval; 
+    obj_lists_all = cell(Ntrain, 1);
+    p = randperm(NobjPerCat);
+    for oo=1:Ntrain 
+        obj_lists_all{oo} = cell(1,3);
+        obj_lists_all{oo}{3} = p(1:Ntest);
+        obj_lists_all{oo}{2} = p((Ntest+1):(Ntest+Nval));
+        obj_lists_all{oo}{1} = p((Ntest+Nval+1):(Ntest+Nval+oo));
+    end
 
-% transformation
-transf_lists_all = { 1:5 };
+    % transformation
+    transf_lists_all = { {1:Ntransfs, 1:Ntransfs, 1:Ntransfs}; {1, 1, 1} };
 
-% day
-day_mappings_all = { 1 };
-create_day_list;
+    % day
+    day_mappings_all = { {1, 1, 1} };
+    day_lists_all = create_day_list(day_mappings_all, opts.Days);
 
-% camera%
-camera_lists_all = { 1 };
+    % camera
+    camera_lists_all = { {1, 1, 1} };
+
+    set_name_prefixes = {'train_', 'val_'};
+    eval_set = 3;
+    
+else 
+
+    %% Just set up the test set
+    
+    % objects per category
+    obj_lists_all = { {1:NobjPerCat} };
+    
+    % transformation
+    transf_lists_all = { {1:Ntransfs} };
+    
+    % day
+    day_mappings_all = { {1} };
+    day_lists_all = create_day_list(day_mappings_all, opts.Days);
+    
+    % camera
+    camera_lists_all = { {1} };
+
+    eval_set = 1;
+    
+end
 
 %% Caffe
 
@@ -273,12 +306,12 @@ if max_bsize*NCROPS ~= bsize_net
 end
 
 % load mean
-if strcmp(model, 'caffenet') && strcmp(mapping, 'none')
+if strcmp(model, 'caffenet') && isempty(mapping)
     d = load(caffepaths.mean_path);
     mean_data = d.mean_data;
-elseif strncmp(model, 'googlenet', length('googlenet')) && strcmp(mapping, 'none')
+elseif strncmp(model, 'googlenet', length('googlenet')) && isempty(mapping)
     mean_data = [104 117 123];
-elseif strcmp(model, 'vgg16') && strcmp(mapping, 'none')
+elseif strcmp(model, 'vgg16') && isempty(mapping)
     mean_data = [103.939 116.779 123.68];
 end
 
@@ -286,24 +319,24 @@ end
 
 for icat=1:length(cat_idx_all)
     
-    cat_idx = cat_idx_all{icat};
+    cat_idx = cat_idx_all{icat}{eval_set};
     
     for iobj=1:length(obj_lists_all)
         
-        obj_list = obj_lists_all{iobj};
+        obj_list = obj_lists_all{iobj}{eval_set};
         
         for itransf=1:length(transf_lists_all)
             
-            transf_list = transf_lists_all{itransf};
+            transf_list = transf_lists_all{itransf}{eval_set};
             
             for iday=1:length(day_lists_all)
                 
-                day_list = day_lists_all{iday};
-                day_mapping = day_mappings_all{iday};
+                day_list = day_lists_all{iday}{eval_set};
+                day_mapping = day_mappings_all{iday}{eval_set};
                 
                 for icam=1:length(camera_lists_all)
                     
-                    camera_list = camera_lists_all{icam};
+                    camera_list = camera_lists_all{icam}{eval_set};
                     
                     %% Assign IO directories
                     
@@ -313,13 +346,8 @@ for icat=1:length(cat_idx_all)
                     input_dir_regtxt = fullfile(input_dir_regtxt_root, dir_regtxt_relative);
                     check_input_dir(input_dir_regtxt);
                     
-                    output_dir_y = fullfile(output_dir_root_y, model, dir_regtxt_relative);
-                    check_output_dir(output_dir_y);
-                                      
-                    if extract_features
-                        output_dir_root_fc = fullfile(exp_dir, 'scores', model);
-                        check_output_dir(output_dir_root_fc);
-                    end
+                    output_dir = fullfile(exp_dir, model, dir_regtxt_relative);
+                    check_output_dir(output_dir);
 
                     %% Set scores to be selected
                     
@@ -332,11 +360,26 @@ for icat=1:length(cat_idx_all)
                         error('You are selecting scores out of net range!');
                     end
                     
-                    %% Create the set name
+                    %% Create the test set name
                     set_name = [strrep(strrep(num2str(obj_list), '   ', '-'), '  ', '-') ...
                         '_tr_' strrep(strrep(num2str(transf_list), '   ', '-'), '  ', '-') ...
                         '_day_' strrep(strrep(num2str(day_mapping), '   ', '-'), '  ', '-') ...
                         '_cam_' strrep(strrep(num2str(camera_list), '   ', '-'), '  ', '-')];
+                    
+                    if ~isempty(mapping)
+                        %% Create the train and val folder name
+                        trainval_dir = '';
+                        for ii=1:length(set_name_prefixes)    
+                            set_name = [set_name_prefixes{ii} strrep(strrep(num2str(obj_lists_all{iobj}{ii}), '   ', '-'), '  ', '-') ...
+                                '_tr_' strrep(strrep(num2str(transf_lists_all{itransf}{ii}), '   ', '-'), '  ', '-') ...
+                                '_day_' strrep(strrep(num2str(day_mappings_all{iday}{ii}), '   ', '-'), '  ', '-') ...
+                                '_cam_' strrep(strrep(num2str(camera_lists_all{icam}{ii}), '   ', '-'), '  ', '-') ...
+                                '_'];
+                            trainval_dir = [trainval_dir set_name];
+                        end
+                    else
+                        trainval_dir = '';
+                    end
                     
                     %% Load the registry and Y (true labels)
                     input_registry = textscan(fullfile(input_dir_regtxt, ['Y_' set_name '.txt']), '%s %d'); 
@@ -350,190 +393,159 @@ for icat=1:length(cat_idx_all)
                     
                     %% Extract scores (+ features) and compute predictions
               
-                    Ypred_avg = cell(Ncat,1);
-                    if strcmp(mapping, 'none')
-                        Ypred_avg_sel = cell(Ncat,1);
-                    end
-                    if strcmp(model, 'caffenet') && strcmp(mapping, 'none') && oversample
-                        Ypred_central = cell(Ncat,1);
-                        if strcmp(mapping, 'none')
-                            Ypred_central_sel = cell(Ncat,1);
-                        end
-                    end
-                    NframesPerCat = cell(Ncat, 1);
+                    % get number of samples
+                    Nsamples = length(Y);
                     
-                    for cc=cat_idx
-                        
-                        NframesPerCat{opts.Cat(cat_names{cc})} = length(REG{opts.Cat(cat_names{cc})});
-                        Ypred_avg{opts.Cat(cat_names{cc})} = zeros(NframesPerCat{opts.Cat(cat_names{cc})}, 1);
-                        if strcmp(mapping, 'none')
-                            Ypred_avg_sel{opts.Cat(cat_names{cc})} = zeros(NframesPerCat{opts.Cat(cat_names{cc})}, 1);
+                    % allocate memory for all predictions
+                    Ypred_avg = zeros(Nsamples,1);
+                    if isempty(mapping)
+                        Ypred_avg_sel = zeros(Nsamples,1);
+                    end
+                    if strcmp(model, 'caffenet') && isempty(mapping) && oversample
+                        Ypred_central = zeros(Nsamples,1);
+                        if isempty(mapping)
+                            Ypred_central_sel = zeros(Nsamples,1);
                         end
-                        if strcmp(model, 'caffenet') && strcmp(mapping, 'none') && oversample
-                            Ypred_central{opts.Cat(cat_names{cc})} = zeros(NframesPerCat{opts.Cat(cat_names{cc})}, 1);
-                            if strcmp(mapping, 'none')
-                                Ypred_central_sel{opts.Cat(cat_names{cc})} = zeros(NframesPerCat{opts.Cat(cat_names{cc})}, 1);
+                    end
+                      
+                    bsize = min(max_bsize, Nsamples);
+                    Nbatches = ceil(Nsamples/bsize);
+                    
+                    for bidx=1:Nbatches
+                        
+                        bstart = (bidx-1)*bsize+1;
+                        bend = min(bidx*bsize, Nsamples);
+                        bsize_curr = bend-bstart+1;
+                        
+                        inputshape = net.blobs('data').shape();
+                        bsize_net = inputshape(4);
+                        if bsize_curr*NCROPS ~= bsize_net
+                            net.blobs('data').reshape([CROP_SIZE CROP_SIZE 3 bsize_curr*NCROPS])
+                            net.reshape() % optional: the net reshapes automatically before a call to forward()
+                        end
+                        
+                        % load images and preprocess one by one
+                        input_data = zeros(CROP_SIZE,CROP_SIZE,3,bsize_curr*NCROPS, 'single');
+                        for imidx=1:bsize_curr
+                            im = imread(fullfile(dset_dir, [REG{bstart+imidx-1}(1:(end-4)) '.jpg']));
+                            
+                            if (strcmp(model, 'caffenet') || strcmp(model, 'googlenet')) && isempty(mapping)
+                                input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image_caffe(im, mean_data, CROP_SIZE, oversample);
+                            elseif strcmp(model, 'vgg16') && isempty(mapping)
+                                input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image_multiscalecrop(im, mean_data, CROP_SIZE, SHORTER_SIDE, GRID);
+                            end
+                            
+                        end
+                        
+                        % extract scores in batches
+                        scores = net.forward({input_data});
+                        scores = scores{1};
+                        
+                        % extract features in batches
+                        if extract_features
+                            feat = cell(nFeat,1);
+                            for ff=1:nFeat
+                                feat{ff} = net.blobs(feat_names{ff}).get_data();
                             end
                         end
                         
-                        bsize = min(max_bsize, NframesPerCat{opts.Cat(cat_names{cc})});
-                        Nbatches = ceil(NframesPerCat{opts.Cat(cat_names{cc})}/bsize);
+                        % reshape, dividing scores per image
+                        scores = reshape(scores, [], NCROPS, bsize_curr);
                         
-                        for bidx=1:Nbatches
-                            
-                            %tic
-                            
-                            bstart = (bidx-1)*bsize+1;
-                            bend = min(bidx*bsize, NframesPerCat{opts.Cat(cat_names{cc})});
-                            bsize_curr = bend-bstart+1;
-                            
-                            inputshape = net.blobs('data').shape();
-                            bsize_net = inputshape(4);
-                            if bsize_curr*NCROPS ~= bsize_net
-                                net.blobs('data').reshape([CROP_SIZE CROP_SIZE 3 bsize_curr*NCROPS])
-                                net.reshape() % optional: the net reshapes automatically before a call to forward()
+                        % reshape, dividing features per image
+                        if extract_features
+                            for ff=1:nFeat
+                                feat{ff} = reshape(feat{ff}, [], NCROPS, bsize_curr);
                             end
-                            
-                            % load images and preprocess one by one
-                            input_data = zeros(CROP_SIZE,CROP_SIZE,3,bsize_curr*NCROPS, 'single');
-                            for imidx=1:bsize_curr
-                                im = imread(fullfile(dset_dir, cat_names{cc}, [REG{opts.Cat(cat_names{cc})}{bstart+imidx-1}(1:(end-4)) '.jpg']));
-                                
-                                if (strcmp(model, 'caffenet') || strcmp(model, 'googlenet')) && strcmp(mapping, 'none')
-                                    input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image_caffe(im, mean_data, CROP_SIZE, oversample);
-                                elseif strcmp(model, 'vgg16') && strcmp(mapping, 'none')
-                                    input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image_multiscalecrop(im, mean_data, CROP_SIZE, SHORTER_SIDE, GRID);
-                                end
-                                
-                            end
-                            
-                            % extract scores in batches
-                            scores = net.forward({input_data});
-                            scores = scores{1};
-
-                            % extract features in batches
-                            if extract_features
-                                feat = cell(nFeat,1);
-                                for ff=1:nFeat
-                                    feat{ff} = net.blobs(feat_names{ff}).get_data();
-                                end
-                            end
-
-                            % reshape, dividing scores per image
-                            scores = reshape(scores, [], NCROPS, bsize_curr);
-                            
-                            % reshape, dividing features per image
-                            if extract_features
-                                for ff=1:nFeat
-                                    feat{ff} = reshape(feat{ff}, [], NCROPS, bsize_curr);
-                                end
-                            end
-                            
-                            % take average score over crops
-                            % if single crop, avg_scores == scores
-                            avg_scores = squeeze(mean(scores, 2));
-                            if strcmp(mapping, 'none')
-                                % select          
-                                avg_scores_sel = avg_scores(sel_idxs, :);
-                            end
-                            
-                            % take central score over crops
-                            if strcmp(model, 'caffenet') && strcmp(mapping, 'none') && oversample
-                                central_scores = squeeze(scores(:,5,:));
-                            end
-                            if strcmp(mapping, 'none')
-                                % select 
-                                central_scores_sel = central_scores(sel_idxs, :);
-                            end
-                            
-                            % max 
-                            [~, maxlabel_avg] = max(avg_scores);
-                            maxlabel_avg = maxlabel_avg - 1;
-                            
-                            if strcmp(mapping, 'none')
-                                % max 
-                                [~, maxlabel_avg_sel] = max(avg_scores_sel);
-                                maxlabel_avg_sel = maxlabel_avg_sel - 1;
-                            end
-                            
-                            if strcmp(model, 'caffenet') && strcmp(mapping, 'none') && oversample
+                        end
+                        
+                        % take average score over crops
+                        % if single crop, avg_scores == scores
+                        avg_scores = squeeze(mean(scores, 2));
+                        if isempty(mapping)
+                            % select
+                            avg_scores_sel = avg_scores(sel_idxs, :);
+                        end
+                        
+                        % take central score over crops
+                        if strcmp(model, 'caffenet') && isempty(mapping) && oversample
+                            central_scores = squeeze(scores(:,5,:));
+                        end
+                        if isempty(mapping)
+                            % select
+                            central_scores_sel = central_scores(sel_idxs, :);
+                        end
+                        
+                        % max
+                        [~, maxlabel_avg] = max(avg_scores);
+                        maxlabel_avg = maxlabel_avg - 1;
+                        
+                        if isempty(mapping)
+                            % max
+                            [~, maxlabel_avg_sel] = max(avg_scores_sel);
+                            maxlabel_avg_sel = maxlabel_avg_sel - 1;
+                        end
+                        
+                        if strcmp(model, 'caffenet') && isempty(mapping) && oversample
+                            % max
+                            [~, maxlabel_central] = max(central_scores);
+                            maxlabel_central = maxlabel_central - 1;
+                            if isempty(mapping)
                                 % max
-                                [~, maxlabel_central] = max(central_scores);
-                                maxlabel_central = maxlabel_central - 1;
-                                if strcmp(mapping, 'none')
-                                    % max
-                                    [~, maxlabel_central_sel] = max(central_scores_sel);
-                                    maxlabel_central_sel = maxlabel_central_sel - 1;
+                                [~, maxlabel_central_sel] = max(central_scores_sel);
+                                maxlabel_central_sel = maxlabel_central_sel - 1;
+                            end
+                        end
+                        
+                        % save extracted features
+                        if extract_features
+                            for imidx=1:bsize_curr
+                                for ff=1:nFeat
+                                    fc = squeeze(feat{ff}(:,:,imidx));
+                                    outpath = fullfile(output_dir, trainval_dir, mapping, 'scores', feat_names{ff}, fileparts(REG{bstart+imidx-1}));
+                                    check_output_dir(outpath);
+                                    save(fullfile(output_dir_root_fc, feat_names{ff}, [REG{bstart+imidx-1}(1:(end-4)) '.mat']), 'fc');
                                 end
                             end
-                            
-                            % save extracted features
-                            if extract_features
-                                for imidx=1:bsize_curr
-                                    for ff=1:nFeat
-                                        fc = squeeze(feat{ff}(:,:,imidx));
-                                        outpath = fullfile(output_dir_root_fc, feat_names{ff}, cat_names{cc}, fileparts(REG{opts.Cat(cat_names{cc})}{bstart+imidx-1}));
-                                        check_output_dir(outpath);
-                                        save(fullfile(output_dir_root_fc, feat_names{ff}, cat_names{cc}, [REG{opts.Cat(cat_names{cc})}{bstart+imidx-1}(1:(end-4)) '.mat']), 'fc');
-                                    end
-                                end
+                        end
+                        
+                        % store all predictions in Y
+                        Ypred_avg(bstart:bend) = maxlabel_avg;
+                        if isempty(mapping)
+                            Ypred_avg_sel(bstart:bend) = maxlabel_avg_sel;
+                        end
+                        if strcmp(model, 'caffenet') && isempty(mapping) && oversample
+                            Ypred_central(bstart:bend) = maxlabel_central;
+                            if isempty(mapping)
+                                Ypred_central_sel(bstart:bend) = maxlabel_central_sel;
                             end
-                            
-                            % store all predictions in Y
-                            Ypred_avg{opts.Cat(cat_names{cc})}(bstart:bend) = maxlabel_avg;
-                            if strcmp(mapping, 'none')
-                                Ypred_avg_sel{opts.Cat(cat_names{cc})}(bstart:bend) = maxlabel_avg_sel;
-                            end
-                            if strcmp(model, 'caffenet') && strcmp(mapping, 'none') && oversample
-                                Ypred_central{opts.Cat(cat_names{cc})}(bstart:bend) = maxlabel_central;
-                                if strcmp(mapping, 'none')
-                                    Ypred_central_sel{opts.Cat(cat_names{cc})}(bstart:bend) = maxlabel_central_sel;
-                                end
-                            end
-                            
-                            %toc
-                            fprintf('%s: batch %d out of %d \n', cat_names{cc}, bidx, Nbatches);
+                        end
+
+                        fprintf('batch %d out of %d \n', bidx, Nbatches);
+                    end
+
+                    % compute accuracy and save everything             
+                    if isempty(mapping)
+                        [acc, C] = trace_confusion(Yimnet+1, Ypred_avg+1, score_length);
+                        save(fullfile(output_dir_y, ['Yavg_' mapping '_' set_names{iset}((length(set_names_prefix{iset})+1):end) '.mat'] ), 'Ypred_avg', 'acc', 'C', '-v7.3');
+                        [acc, C] = trace_confusion(Y+1, Ypred_avg_sel+1, length(cat_idx));
+                        save(fullfile(output_dir_y, ['Yavg_sel_' mapping '_' set_names{iset}((length(set_names_prefix{iset})+1):end) '.mat'] ), 'Ypred_avg_sel', 'acc', 'C', '-v7.3');                   
+                        if oversample
+                            [acc, C] = trace_confusion(Yimnet+1, Ypred_central+1, score_length);
+                            save(fullfile(output_dir_y, ['Ycentral_' mapping '_' set_names{iset}((length(set_names_prefix{iset})+1):end) '.mat'] ), 'Ypred_central', 'acc', 'C', '-v7.3');
+                            [acc, C] = trace_confusion(Y+1, Ypred_central_sel+1, length(cat_idx));
+                            save(fullfile(output_dir_y, ['Ycentral_sel_' mapping '_' set_names{iset}((length(set_names_prefix{iset})+1):end) '.mat'] ), 'Ypred_central_sel', 'acc', 'C', '-v7.3');
+                        end
+                    else          
+                        [acc, C] = trace_confusion(Y+1, Ypred_avg+1, score_length);
+                        save(fullfile(output_dir_y, ['Yavg_' mapping '_' set_names_prefix{iset} cell2mat(strcat('_', set_names(:))') '.mat'] ), 'Ypred_avg', 'acc', 'C', '-v7.3');
+                        if oversample
+                            [acc, C] = trace_confusion(Y+1, Ypred_central+1, score_length);
+                            save(fullfile(output_dir_y, ['Ycentral_' mapping '_' set_names_prefix{iset} cell2mat(strcat('_', set_names(:))') '.mat'] ), 'Ypred_central', 'acc', 'C', '-v7.3');
                         end
                         
                     end
-                    
-                    % compute accuracy and save everything
-                    Ypred = Ypred_avg;
-                    [acc, C] = trace_confusion(cell2mat(Yimnet)+1, cell2mat(Ypred)+1, score_length);
-                    if strcmp(mapping, 'tuned')
-                        save(fullfile(output_dir_y, ['Yavg_' mapping '_' set_names_prefix{iset} cell2mat(strcat('_', set_names(:))') '.mat'] ), 'Ypred', 'acc', 'C', '-v7.3');
-                    elseif strcmp(mapping, 'none')
-                        save(fullfile(output_dir_y, ['Yavg_' mapping '_' set_names{iset}((length(set_names_prefix{iset})+1):end) '.mat'] ), 'Ypred', 'acc', 'C', '-v7.3');
-                    end
-                    if strcmp(mapping, 'none')
-                        Ypred = Ypred_avg_sel;
-                        [acc, C] = trace_confusion(cell2mat(Y)+1, cell2mat(Ypred)+1, length(cat_idx));
-                        if strcmp(mapping, 'tuned')
-                            save(fullfile(output_dir_y, ['Yavgsel_' mapping '_' set_names_prefix{iset} cell2mat(strcat('_', set_names(:))') '.mat'] ), 'Ypred', 'acc', 'C', '-v7.3');
-                        elseif strcmp(mapping, 'none')
-                            save(fullfile(output_dir_y, ['Yavgsel_' mapping '_' set_names{iset}((length(set_names_prefix{iset})+1):end) '.mat'] ), 'Ypred', 'acc', 'C', '-v7.3');
-                        end
-                    end
-                    if strcmp(model, 'caffenet') && strcmp(mapping, 'none') && oversample
-                        Ypred = Ypred_central;
-                        [acc, C] = trace_confusion(cell2mat(Yimnet), cell2mat(Ypred));
-                        if strcmp(mapping, 'tuned')
-                            save(fullfile(output_dir_y, ['Ycentral_' mapping '_' set_names_prefix{iset} cell2mat(strcat('_', set_names(:))') '.mat'] ), 'Ypred', 'acc', 'C', '-v7.3');
-                        elseif strcmp(mapping, 'none')
-                            save(fullfile(output_dir_y, ['Ycentral_' mapping '_' set_names{iset}((length(set_names_prefix{iset})+1):end) '.mat'] ), 'Ypred', 'acc', 'C', '-v7.3');
-                        end
-                        if strcmp(mapping, 'none')
-                            Ypred = Ypred_central_sel;
-                            [acc, C] = trace_confusion(cell2mat(Y), cell2mat(Ypred));
-                            if strcmp(mapping, 'tuned')
-                                save(fullfile(output_dir_y, ['Ycentralsel_' mapping '_' set_names_prefix{iset} cell2mat(strcat('_', set_names(:))') '.mat'] ), 'Ypred', 'acc', 'C', '-v7.3');
-                            elseif strcmp(mapping, 'none')
-                                save(fullfile(output_dir_y, ['Ycentralsel_' mapping '_' set_names{iset}((length(set_names_prefix{iset})+1):end) '.mat'] ), 'Ypred', 'acc', 'C', '-v7.3');
-                            end
-                        end
-                    end
-                    
-                    
+
                 end
             end
         end
