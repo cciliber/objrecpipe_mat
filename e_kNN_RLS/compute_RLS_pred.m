@@ -60,89 +60,47 @@ check_output_dir(exp_dir);
 %cat_idx_all = { [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20] };
 cat_idx_all = { [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20] };
 
+%% Set up train and val test sets
 
+% objects per category
+Ntest = 1;
+Nval = 1;
+Ntrain = NobjPerCat - Ntest - Nval;
+obj_lists_all = cell(Ntrain, 1);
+p = randperm(NobjPerCat);
+for oo=1:Ntrain
+    obj_lists_all{oo} = cell(1,3);
+    obj_lists_all{oo}{3} = p(1:Ntest);
+    obj_lists_all{oo}{2} = p((Ntest+1):(Ntest+Nval));
+    obj_lists_all{oo}{1} = p((Ntest+Nval+1):(Ntest+Nval+oo));
+end
+
+% transformation
+%transf_lists_all = { {1, 1:Ntransfs}; {2, 1:Ntransfs}; {3, 1:Ntransfs}; {4, 1:Ntransfs}};
+%transf_lists_all = { {5, 1:Ntransfs}; {4:5, 1:Ntransfs}; {[2 4:5], 1:Ntransfs}; {2:5, 1:Ntransfs}; {1:Ntransfs, 1:Ntransfs} };
+transf_lists_all = { {5, 2} };
+%transf_lists_all = { {1:Ntransfs} };
+
+% day
+day_mappings_all = { {1, 1} };
+day_lists_all = create_day_list(day_mappings_all, opts.Days);
+
+% camera
+camera_lists_all = { {1, 1} };
+
+trainval_prefixes = {'train_', 'val_'};
+trainval_sets = [1 2];
+tr_set = trainval_sets(1);
+val_set = trainval_sets(2);
+eval_set = 3;
+
+%% Caffe model
 
 %model = 'googlenet';
 model = 'caffenet';
 %model = 'vgg';
 
 feature = 'fc6';
-
-
-
-
-
-
-
-
-%% Set up the experiments
-
-% Default sets that are searched
-
-set_names_prefix = {'train_', 'test_'};
-Nsets = length(set_names_prefix);
-
-% Choose objects per category
-
-if strcmp(experiment, 'categorization')
-    
-    obj_lists_all = { {1:7, 8:10} };
-    %obj_lists_all = { {1:7, 8:10} };
-    %obj_lists_all = { {1:3, 8:10}, {1:7, 8:10} };
-    
-elseif strcmp(experiment, 'identification')
-    
-    id_exps = {1:3, 1:5, 1:7, 1:10};
-    obj_lists_all = cell(length(id_exps), 1);
-    for ii=1:length(id_exps)
-        obj_lists_all{ii} = repmat(id_exps(ii), 1, Nsets);
-    end
-    
-end
-
-transf_lists_all = { {1, 1:Ntransfs} {2, 1:Ntransfs} {3, 1:Ntransfs} {4, 1:Ntransfs} {5, 1:Ntransfs}};
-%transf_lists_all = { {5, 1:Ntransfs} {4:5, 1:Ntransfs} {[2 4:5], 1:Ntransfs} {2:5, 1:Ntransfs} {1:Ntransfs, 1:Ntransfs} };
-%transf_lists_all = { {5, 5} };
-
-day_mappings_all = { {1, 1:2} };
-day_lists_all = cell(length(day_mappings_all),1);
-
-for ee=1:length(day_mappings_all)
-    
-    day_mappings = day_mappings_all{ee};
-    
-    day_lists = cell(Nsets,1);
-    tmp = keys(opts.Days);
-    for ii=1:Nsets
-        for dd=1:length(day_mappings{ii})
-            tmp1 = tmp(cell2mat(values(opts.Days))==day_mappings{ii}(dd))';
-            tmp2 = str2num(cellfun(@(x) x(4:end), tmp1))';
-            day_lists{ii} = [day_lists{ii} tmp2];
-        end
-    end
-    
-    day_lists_all{ee} = day_lists;
-    
-end
-
-camera_lists_all = { {1, 1} };
-
-% Choose whether to maintain the same size of 1st set for all sets
-
-same_size = false;
-%same_size = true;
-%same_size = true;
-
-if same_size == true
-    %question_dir = 'frameORtransf';
-    question_dir = 'frameORinst';
-else
-    question_dir = '';
-end
-
-
-
-
 
 %% For each experiment, go!
 
@@ -167,44 +125,55 @@ for icat=1:length(cat_idx_all)
                     
                     camera_lists = camera_lists_all{icam};
                     
-                    % Assign the proper IO directories
-        
-                    dir_regtxt_relative = fullfile(['Ncat_' num2str(length(cat_idx))], strrep(strrep(num2str(cat_idx), '   ', '-'), '  ', '-'));
-                    if strcmp(experiment, 'identification')
-                        dir_regtxt_relative = fullfile(dir_regtxt_relative, strrep(strrep(num2str(obj_list), '   ', '-'), '  ', '-'));
+                    %% Create the train val folder name 
+                    for iset=trainval_sets
+                        set_names{iset} = [strrep(strrep(num2str(obj_lists{iset}), '   ', '-'), '  ', '-') ...
+                        '_tr_' strrep(strrep(num2str(transf_lists{iset}), '   ', '-'), '  ', '-') ...
+                        '_day_' strrep(strrep(num2str(day_mappings{iset}), '   ', '-'), '  ', '-') ...
+                        '_cam_' strrep(strrep(num2str(camera_lists{iset}), '   ', '-'), '  ', '-')];
                     end
-        
-                    input_dir_regtxt = fullfile(input_dir_regtxt_root, dir_regtxt_relative, question_dir);
-                    check_input_dir(input_dir_regtxt);
-        
-                    output_dir = fullfile(output_dir_root, dir_regtxt_relative, question_dir);
-                    check_output_dir(output_dir);
-        
-                    % Create set names
+                    trainval_dir = cell2mat(strcat(trainval_prefixes(:), set_names(:), '_')');
+                    trainval_dir = trainval_dir(1:end-1);
                     
-                    for ii=1:Nsets
-                        set_names{iset} = [set_names_prefix{iset} strrep(strrep(num2str(obj_lists{iset}), '   ', '-'), '  ', '-')];
-                        set_names{iset} = [set_names{iset} '_tr_' strrep(strrep(num2str(transf_lists{iset}), '   ', '-'), '  ', '-')];
-                        set_names{iset} = [set_names{iset} '_cam_' strrep(strrep(num2str(camera_lists{iset}), '   ', '-'), '  ', '-')];
-                        set_names{iset} = [set_names{iset} '_day_' strrep(strrep(num2str(day_mappings{iset}), '   ', '-'), '  ', '-')];
-                    end
-        
-                    %% Load Y and create X
-                    disp('Loading Y and creating X...');
+                    %% Assign IO directories
+                    
+                    dir_regtxt_relative = fullfile(['Ncat_' num2str(num_output)], strrep(strrep(num2str(cat_idx), '   ', '-'), '  ', '-'));
+                    dir_regtxt_relative = fullfile(dir_regtxt_relative, question_dir);
+                    
+                    input_dir_regtxt = fullfile(input_dir_regtxt_root, dir_regtxt_relative);
+                    check_input_dir(input_dir_regtxt);
+                    
+                    output_dir = fullfile(exp_dir, model, dir_regtxt_relative, trainval_dir, mapping);
+                    check_output_dir(output_dir);
+
+                    %% Load true Y and create X
       
                     N = zeros(Nsets, 1);
                     NframesPerCat = cell(Nsets, 1);
         
                     first_loaded = false;
                     
-                    for iset=1:Nsets
+                    for iset=trainval_sets
             
                         set_name = set_names{iset};
             
-                        % load Y
-                        ystruct = load(fullfile(input_dir_regtxt, ['Y_' set_name '.mat']));
-                        Y = cell2mat(ystruct.Y);
-                        clear ystruct
+                        %% Load the registry and Y (true labels)
+                        fid = fopen(fullfile(input_dir_regtxt, [set_name '_Y.txt']));
+                        input_registry = textscan(fid, '%s %d');
+                        fclose(fid);
+                        Y = input_registry{2};
+                        REG = input_registry{1};
+                        if use_imnetlabels
+                            fid = fopen(fullfile(input_dir_regtxt, [set_name '_Yimnet.txt']));
+                            input_registry = textscan(fid, '%s %d');
+                            fclose(fid);
+                            Yimnet = input_registry{2};
+                        end
+                        clear input_registry;
+                        
+                        
+                        
+                        
                         
                         % create X
                         regstruct = load(fullfile(input_dir_regtxt, ['REG_' set_name '.mat']));

@@ -39,8 +39,8 @@ Ndays = opts.Days.Count;
 Ncameras = opts.Cameras.Count;
 
 %% Whether the net is finetuned or not
-mapping = '';
-%mapping = 'tuning';
+%mapping = '';
+mapping = 'tuning';
 
 %% Setup the question
 question_dir = '';
@@ -103,10 +103,8 @@ if ~isempty(mapping)
     
     % sets
     eval_set = 3;
-    tr_set = 1;
-    val_set = 2;
-    
-    set_name_prefixes = {'train_', 'val_'};
+    trainval_sets = [1 2];
+    trainval_prefixes = {'train_', 'val_'};
     
 else 
 
@@ -351,13 +349,14 @@ for icat=1:length(cat_idx_all)
                     
                     if ~isempty(mapping)
                         %% Create the train val folder name
-                        for iset=1:length(set_name_prefixes) 
+                        for iset=trainval_sets
                             set_names{iset} = [strrep(strrep(num2str(obj_lists_all{iobj}{iset}), '   ', '-'), '  ', '-') ...
                             '_tr_' strrep(strrep(num2str(transf_lists_all{itransf}{iset}), '   ', '-'), '  ', '-') ...
                             '_day_' strrep(strrep(num2str(day_mappings_all{iday}{iset}), '   ', '-'), '  ', '-') ...
                             '_cam_' strrep(strrep(num2str(camera_lists_all{icam}{iset}), '   ', '-'), '  ', '-')];
                         end
-                        trainval_dir = cell2mat(strcat(set_name_prefixes(:), '_', set_names(:))');
+                        trainval_dir = cell2mat(strcat(trainval_prefixes(:), set_names(:), '_')');
+                        trainval_dir = trainval_dir(1:end-1);
                     else
                         trainval_dir = '';
                     end

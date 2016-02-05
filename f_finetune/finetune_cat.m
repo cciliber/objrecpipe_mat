@@ -107,9 +107,11 @@ day_lists_all = create_day_list(day_mappings_all, opts.Days);
 % camera
 camera_lists_all = { {1, 1} };
 
-set_name_prefixes = {'train_', 'val_'};
-Nsets = length(set_name_prefixes);
-
+trainval_prefixes = {'train_', 'val_'};
+trainval_sets = [1 2];
+tr_set = trainval_sets(1);
+val_set = trainval_sets(2);
+                    
 %% Caffe model
 
 model = 'caffenet';
@@ -284,13 +286,14 @@ for icat=1:length(cat_idx_all)
                     camera_lists = camera_lists_all{icam};
                     
                     %% Create the train val folder name 
-                    for iset=1:Nsets
+                    for iset=trainval_sets
                         set_names{iset} = [strrep(strrep(num2str(obj_lists{iset}), '   ', '-'), '  ', '-') ...
                         '_tr_' strrep(strrep(num2str(transf_lists{iset}), '   ', '-'), '  ', '-') ...
-                        '_cam_' strrep(strrep(num2str(camera_lists{iset}), '   ', '-'), '  ', '-') ...
-                        '_day_' strrep(strrep(num2str(day_mappings{iset}), '   ', '-'), '  ', '-')];
+                        '_day_' strrep(strrep(num2str(day_mappings{iset}), '   ', '-'), '  ', '-') ...
+                        '_cam_' strrep(strrep(num2str(camera_lists{iset}), '   ', '-'), '  ', '-')];
                     end
-                    trainval_dir = cell2mat(strcat(set_name_prefixes(:), '_', set_names(:))');
+                    trainval_dir = cell2mat(strcat(trainval_prefixes(:), set_names(:), '_')');
+                    trainval_dir = trainval_dir(1:end-1);
                     
                     %% Number of classes
                     num_output = length(cat_idx);
@@ -311,12 +314,12 @@ for icat=1:length(cat_idx_all)
                     dbname = cell(Nsets,1);
                     dbpath = cell(Nsets,1);
                     Nsamples = zeros(Nsets, 1);
-                    for iset=1:Nsets
+                    for iset=trainval_sets
                         
                         % create lmdb         
                         filelist = fullfile(input_dir_regtxt, [set_names{iset} '.txt']);
                         
-                        dbname{iset} = [set_name_prefixes{iset} '_Y_lmdb'];   
+                        dbname{iset} = [trainval_prefixes{iset} '_Y_lmdb'];   
                         dbpath{iset} = fullfile(output_dir, dbname{iset});
 
                         command = sprintf('%s --resize_width=%d --resize_height=%d --shuffle %s %s %s', create_lmdb_bin_path, MEAN_W, MEAN_H, [dset_dir '/'], filelist, dbpath{iset});
@@ -331,11 +334,8 @@ for icat=1:length(cat_idx_all)
                     end
                     
                     %% Compute train mean image (binaryproto)
-                        
-                    tr_set = find(strcmp(set_name_prefixes, 'train_')>0);
-                    val_set = find(strcmp(set_name_prefixes, 'val_')>0);
-                    
-                    mean_name = [set_name_prefixes{tr_set} '_mean.binaryproto'];                   
+
+                    mean_name = [trainval_prefixes{tr_set} '_mean.binaryproto'];                   
                     mean_path = fullfile(output_dir, mean_name);
                         
                     command = sprintf('%s %s %s', compute_mean_bin_path, dbpath{tr_set}, mean_path);
