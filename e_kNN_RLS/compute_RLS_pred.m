@@ -1,15 +1,13 @@
-%% Setup
 
-%FEATURES_DIR = '/Users/giulia/REPOS/objrecpipe_mat';
-%FEATURES_DIR = '/home/giulia/REPOS/objrecpipe_mat';
+clear all;
+
 FEATURES_DIR = '/data/giulia/REPOS/objrecpipe_mat';
 addpath(genpath(FEATURES_DIR));
 
 gurls_setup();
 vl_feat_setup();
 
-%DATA_DIR = '/media/giulia/MyPassport';
-%DATA_DIR = '/Volumes/MyPassport';
+%% Global data dir
 DATA_DIR = '/data/giulia/ICUBWORLD_ULTIMATE';
 
 %% Dataset info
@@ -32,25 +30,57 @@ Ntransfs = opts.Transfs.Count;
 Ndays = opts.Days.Count;
 Ncameras = opts.Cameras.Count;
 
+%% Where to put the models
+mapping = 'rls';
+
+%% Setup the question
+same_size = false;
+if same_size == true
+    %question_dir = 'frameORtransf';
+    question_dir = 'frameORinst';
+end
+
+%% Setup the IO root directories
+
+% input scores
+%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid384_disp_finaltree');
+%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb60_disp_finaltree');
+dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid256_disp_finaltree');
+%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb30_disp_finaltree');
+
+% input registries
+input_dir_regtxt_root = fullfile(DATA_DIR, 'iCubWorldUltimate_registries', 'categorization');
+check_input_dir(input_dir_regtxt_root);
+
+% output root
+exp_dir = fullfile([dset_dir '_experiments'], 'categorization');
+check_output_dir(exp_dir);
+
+%% Categories
+%cat_idx_all = { [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20] };
+cat_idx_all = { [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20] };
+
+
+
+%model = 'googlenet';
+model = 'caffenet';
+%model = 'vgg';
+
+feature = 'fc6';
+
+
+
+
+
+
+
+
 %% Set up the experiments
 
 % Default sets that are searched
 
 set_names_prefix = {'train_', 'test_'};
 Nsets = length(set_names_prefix);
-
-% Experiment kind
-
-experiment = 'categorization';
-%experiment = 'identification';
-
-% Mapping (used only to name the resulting predictions)
-
-mapping = 'RLS';
-
-% Choose categories
-
-cat_idx_all = { [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20]};
 
 % Choose objects per category
 
@@ -110,31 +140,9 @@ else
     question_dir = '';
 end
 
-%% Set the IO root directories
 
-% Location of the scores
 
-%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid384_disp_finaltree');
-%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb60_disp_finaltree');
-dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid256_disp_finaltree');
-%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb30_disp_finaltree');
 
-exp_dir = fullfile([dset_dir '_experiments'], 'test_offtheshelfnets');
-
-%model = 'googlenet';
-model = 'caffenet';
-%model = 'vgg';
-
-feature = 'fc6';
-
-input_dir = fullfile(exp_dir, 'scores', model, feature);
-check_input_dir(input_dir);
-
-output_dir_root = fullfile(exp_dir, 'predictions', model, feature, experiment);
-check_output_dir(output_dir_root);
-
-input_dir_regtxt_root = fullfile(DATA_DIR, 'iCubWorldUltimate_registries', experiment);
-check_input_dir(input_dir_regtxt_root);
 
 %% For each experiment, go!
 

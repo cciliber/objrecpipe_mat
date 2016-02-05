@@ -1,7 +1,11 @@
-%% Caffe setup
 
-caffe_dir = '/usr/local/src/robot/caffe/';
-%caffe_dir = '/data/giulia/REPOS/caffe';
+clear all;
+
+FEATURES_DIR = '/data/giulia/REPOS/objrecpipe_mat';
+addpath(genpath(FEATURES_DIR));
+
+%caffe_dir = '/usr/local/src/robot/caffe/';
+caffe_dir = '/data/giulia/REPOS/caffe';
 
 matlab_interface = false;
 if matlab_interface
@@ -12,26 +16,17 @@ else
     caffe_bin_path = fullfile(caffe_dir, 'build/install/bin/caffe');
 end
 
-% use GPU
 gpu_id = 0;
-
-% train or test caffe net
 phase = 'train';
 
 %% This code setup
 
-%FEATURES_DIR = '/home/giulia/REPOS/objrecpipe_mat';
-FEATURES_DIR = '/data/giulia/REPOS/objrecpipe_mat';
-addpath(genpath(FEATURES_DIR));
 create_lmdb_bin_path = fullfile(FEATURES_DIR, 'f_finetune/prepare_subsets/create_lmdb/build/create_lmdb_icubworld');
 compute_mean_bin_path = fullfile(FEATURES_DIR, 'f_finetune/prepare_subsets/compute_mean/build/compute_mean_icubworld');
 template_prototxt_path = fullfile(FEATURES_DIR, 'f_finetune/prepare_prototxts/template_models');
 parse_log_path = fullfile(FEATURES_DIR, 'f_finetune/parse_caffe_log.sh');
 
-%% Data dir
-
-%DATA_DIR = '/media/giulia/MyPassport';
-%DATA_DIR = '/Volumes/MyPassport';
+%% Global data dir
 DATA_DIR = '/data/giulia/ICUBWORLD_ULTIMATE';
 
 %% Dataset info
@@ -54,96 +49,78 @@ Ntransfs = opts.Transfs.Count;
 Ndays = opts.Days.Count;
 Ncameras = opts.Cameras.Count;
 
-%% Set up the experiments
+%% Where to put the models
+mapping = 'tuning';
 
-% Default sets that are searched
-
-set_names_prefix = {'train_', 'val_'};
-Nsets = length(set_names_prefix);
-
-% Experiment kind
-
-experiment = 'categorization';
-%experiment = 'identification';
-
-% Whether to use the imnet or the tuning labels
-
-use_imnetlabels = false;
-
-% Choose categories
-
-cat_idx_all = { [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20] };
-
-% Choose objects per category
-
-if strcmp(experiment, 'categorization')
-    
-    %obj_lists_all = { {1:7, 8:10} };
-    obj_lists_all = { {1:7, 5} };
-    %obj_lists_all = { {8:10} };
-    
-elseif strcmp(experiment, 'identification')
-    
-    id_exps = {1:3, 1:5, 1:7, 1:10};
-    obj_lists_all = cell(length(id_exps), 1);
-    for ii=1:length(id_exps)
-        obj_lists_all{ii} = repmat(id_exps(ii), 1, Nsets);
-    end
-    
-end
-
-% Choose transformation, day, camera
-
-%transf_lists_all = { {1, 1:Ntransfs} {2, 1:Ntransfs} {3, 1:Ntransfs} {4, 1:Ntransfs}};
-%transf_lists_all = { {5, 1:Ntransfs} {4:5, 1:Ntransfs} {[2 4:5], 1:Ntransfs} {2:5, 1:Ntransfs} {1:Ntransfs, 1:Ntransfs} };
-transf_lists_all = { {5, 2} };
-%transf_lists_all = { {1:Ntransfs} };
-
-day_mappings_all = { {1, 1} };
-day_lists_all = cell(length(day_mappings_all),1);
-
-for ee=1:length(day_mappings_all)
-    
-    day_mappings = day_mappings_all{ee};
-    
-    day_lists = cell(Nsets,1);
-    tmp = keys(opts.Days);
-    for ii=1:Nsets
-        for dd=1:length(day_mappings{ii})
-            tmp1 = tmp(cell2mat(values(opts.Days))==day_mappings{ii}(dd))';
-            tmp2 = str2num(cellfun(@(x) x(4:end), tmp1))';
-            day_lists{ii} = [day_lists{ii} tmp2];
-        end
-    end
-    
-    day_lists_all{ee} = day_lists;
-    
-end
-
-camera_lists_all = { {1, 1} };
-
-% Choose whether to maintain the same size of 1st set for all sets
-
+%% Setup the question
 same_size = false;
-%same_size = true;
-%same_size = true;
-
 if same_size == true
     %question_dir = 'frameORtransf';
     question_dir = 'frameORinst';
-else
-    question_dir = '';
 end
 
-%% Choose caffe model
+%% Set up the IO root directories
+
+% input images
+%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid384_disp_finaltree');
+%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb60_disp_finaltree');
+dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid256_disp_finaltree');
+%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb30_disp_finaltree');
+
+% input registries
+input_dir_regtxt_root = fullfile(DATA_DIR, 'iCubWorldUltimate_registries', 'categorization');
+check_input_dir(input_dir_regtxt_root);
+
+% output root
+exp_dir = fullfile([dset_dir '_experiments'], 'categorization');
+check_output_dir(exp_dir);
+
+%% Categories
+%cat_idx_all = { [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20] };
+cat_idx_all = { [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20] };
+
+%% Set up train and val test sets
+
+% objects per category
+Ntest = 1;
+Nval = 1;
+Ntrain = NobjPerCat - Ntest - Nval;
+obj_lists_all = cell(Ntrain, 1);
+p = randperm(NobjPerCat);
+for oo=1:Ntrain
+    obj_lists_all{oo} = cell(1,3);
+    obj_lists_all{oo}{3} = p(1:Ntest);
+    obj_lists_all{oo}{2} = p((Ntest+1):(Ntest+Nval));
+    obj_lists_all{oo}{1} = p((Ntest+Nval+1):(Ntest+Nval+oo));
+end
+
+% transformation
+%transf_lists_all = { {1, 1:Ntransfs}; {2, 1:Ntransfs}; {3, 1:Ntransfs}; {4, 1:Ntransfs}};
+%transf_lists_all = { {5, 1:Ntransfs}; {4:5, 1:Ntransfs}; {[2 4:5], 1:Ntransfs}; {2:5, 1:Ntransfs}; {1:Ntransfs, 1:Ntransfs} };
+transf_lists_all = { {5, 2} };
+%transf_lists_all = { {1:Ntransfs} };
+
+% day
+day_mappings_all = { {1, 1} };
+day_lists_all = create_day_list(day_mappings_all, opts.Days);
+
+% camera
+camera_lists_all = { {1, 1} };
+
+set_name_prefixes = {'train_', 'val_'};
+Nsets = length(set_name_prefixes);
+
+%% Caffe model
 
 model = 'caffenet';
-%model = 'googlenet';
-%model = 'vgg16';
 
 if strcmp(model, 'caffenet')
     
+    % model dir
     model_dir = fullfile(caffe_dir, 'models/bvlc_reference_caffenet/');
+    
+    % net weights
+    caffepaths.net_weights = fullfile(model_dir, 'bvlc_reference_caffenet.caffemodel');
     
     MEAN_W = 256;
     MEAN_H = 256;
@@ -182,12 +159,8 @@ if strcmp(model, 'caffenet')
     
     % solver initialization
     % suypposing that the fine-tuning is the same for all experiments
-    solver_params = create_struct_from_txt(caffepaths.solver_struct_types, caffepaths.solver_struct_values);
-             
+    solver_params = create_struct_from_txt(caffepaths.solver_struct_types, caffepaths.solver_struct_values);         
     solver_params.base_lr = 0.001;
-    
-    % net weights
-    caffepaths.net_weights = fullfile(model_dir, 'bvlc_reference_caffenet.caffemodel');
     
 elseif strcmp(model, 'googlenet')
     
@@ -287,25 +260,6 @@ elseif strcmp(model, 'vgg16')
     
 end
 
-%% Input images
-
-%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid384_disp_finaltree');
-%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb60_disp_finaltree');
-dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid256_disp_finaltree');
-%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb30_disp_finaltree');
-
-%% Input registries
-
-input_dir_regtxt_root = fullfile(DATA_DIR, 'iCubWorldUltimate_registries', experiment);
-check_input_dir(input_dir_regtxt_root);
-
-%% Output models
-
-exp_dir = fullfile([dset_dir '_experiments'], 'tuning');
-
-output_dir_root = fullfile(exp_dir, 'models', model, experiment);
-check_output_dir(output_dir_root);
-
 %% For each experiment, go!
 
 for icat=1:length(cat_idx_all)
@@ -329,55 +283,40 @@ for icat=1:length(cat_idx_all)
                     
                     camera_lists = camera_lists_all{icam};
                     
-                    %% Assing number of classes
-                    
-                    num_output = length(cat_idx);
-                    if strcmp(experiment, 'identification')
-                        num_output = num_output*length(obj_list);
+                    %% Create the train val folder name 
+                    for iset=1:Nsets
+                        set_names{iset} = [strrep(strrep(num2str(obj_lists{iset}), '   ', '-'), '  ', '-') ...
+                        '_tr_' strrep(strrep(num2str(transf_lists{iset}), '   ', '-'), '  ', '-') ...
+                        '_cam_' strrep(strrep(num2str(camera_lists{iset}), '   ', '-'), '  ', '-') ...
+                        '_day_' strrep(strrep(num2str(day_mappings{iset}), '   ', '-'), '  ', '-')];
                     end
+                    trainval_dir = cell2mat(strcat(set_name_prefixes(:), '_', set_names(:))');
+                    
+                    %% Number of classes
+                    num_output = length(cat_idx);
                     
                     %% Assign IO directories
                     
                     dir_regtxt_relative = fullfile(['Ncat_' num2str(num_output)], strrep(strrep(num2str(cat_idx), '   ', '-'), '  ', '-'));
-                    if strcmp(experiment, 'identification')
-                        dir_regtxt_relative = fullfile(dir_regtxt_relative, strrep(strrep(num2str(obj_list), '   ', '-'), '  ', '-'));
-                    end
-                    
                     dir_regtxt_relative = fullfile(dir_regtxt_relative, question_dir);
                     
                     input_dir_regtxt = fullfile(input_dir_regtxt_root, dir_regtxt_relative);
                     check_input_dir(input_dir_regtxt);
                     
-                    %% Create set names
-                    
-                    for iset=1:Nsets
-                        set_names{iset} = [set_names_prefix{iset} strrep(strrep(num2str(obj_lists{iset}), '   ', '-'), '  ', '-')];
-                        set_names{iset} = [set_names{iset} '_tr_' strrep(strrep(num2str(transf_lists{iset}), '   ', '-'), '  ', '-')];
-                        set_names{iset} = [set_names{iset} '_cam_' strrep(strrep(num2str(camera_lists{iset}), '   ', '-'), '  ', '-')];
-                        set_names{iset} = [set_names{iset} '_day_' strrep(strrep(num2str(day_mappings{iset}), '   ', '-'), '  ', '-')];
-                    end
-
-                    %% Assign specific output dir for all files of the model
-                    
-                    set_names_concat = cell2mat(strcat('_', set_names(:))');
-                    output_dir = fullfile(output_dir_root, dir_regtxt_relative, set_names_concat(2:end));
+                    output_dir = fullfile(exp_dir, model, dir_regtxt_relative, trainval_dir, mapping, 'model');
                     check_output_dir(output_dir);
+                    
+                    %% Create lmdbs
                     
                     dbname = cell(Nsets,1);
                     dbpath = cell(Nsets,1);
                     Nsamples = zeros(Nsets, 1);
                     for iset=1:Nsets
                         
-                        %% Create lmdb
+                        % create lmdb         
+                        filelist = fullfile(input_dir_regtxt, [set_names{iset} '.txt']);
                         
-                        if use_imnetlabels
-                            dbname{iset} = [set_names{iset} '_Yimnet'];
-                        else
-                            dbname{iset} = [set_names{iset} '_Y'];
-                        end   
-                        filelist = fullfile(input_dir_regtxt, [dbname{iset} '.txt']);
-                        
-                        dbname{iset} = [dbname{iset} '_lmdb'];
+                        dbname{iset} = [set_name_prefixes{iset} '_Y_lmdb'];   
                         dbpath{iset} = fullfile(output_dir, dbname{iset});
 
                         command = sprintf('%s --resize_width=%d --resize_height=%d --shuffle %s %s %s', create_lmdb_bin_path, MEAN_W, MEAN_H, [dset_dir '/'], filelist, dbpath{iset});
@@ -386,17 +325,17 @@ for icat=1:length(cat_idx_all)
                             error(cmdout);
                         end
                         
-                        %% Get number of samples
+                        % get number of samples
                         Nsamples(iset) = get_linecount(filelist); 
                         
                     end
                     
                     %% Compute train mean image (binaryproto)
                         
-                    tr_set = find(strcmp(set_names_prefix, 'train_')>0);
-                    val_set = find(strcmp(set_names_prefix, 'val_')>0);
+                    tr_set = find(strcmp(set_name_prefixes, 'train_')>0);
+                    val_set = find(strcmp(set_name_prefixes, 'val_')>0);
                     
-                    mean_name = [set_names{tr_set} '_mean.binaryproto'];                   
+                    mean_name = [set_name_prefixes{tr_set} '_mean.binaryproto'];                   
                     mean_path = fullfile(output_dir, mean_name);
                         
                     command = sprintf('%s %s %s', compute_mean_bin_path, dbpath{tr_set}, mean_path);
@@ -407,7 +346,7 @@ for icat=1:length(cat_idx_all)
  
                     %% Modify net definition
                     
-                    net_model_name = ['trainval' cell2mat(strcat('_', set_names(:))') '.prototxt'];
+                    net_model_name = 'train_val.prototxt';
                     caffepaths.net_model = fullfile(output_dir, net_model_name);
                        
                     net_params.fc8_num_output = num_output;
@@ -424,10 +363,10 @@ for icat=1:length(cat_idx_all)
                       
                     %% Modify solver definition 
                     
-                    caffepaths.solver = fullfile(output_dir, ['solver' cell2mat(strcat('_', set_names(:))') '.prototxt']);
+                    caffepaths.solver = fullfile(output_dir, 'solver.prototxt');
                     
                     solver_params.net = net_model_name;
-                    solver_params.snapshot_prefix = ['snap' cell2mat(strcat('_', set_names(:))')];
+                    solver_params.snapshot_prefix = 'snap';
                     
                     % num iters to perform one epoch
                     epoch_train = ceil(Nsamples(tr_set) / double(net_params.train_batch_size));
@@ -497,8 +436,8 @@ for icat=1:length(cat_idx_all)
                     solverstatename = [solver_params.snapshot_prefix '_iter_' epoch '.solverstate'];
 
                     % rename it
-                    movefile(modelname,modelname(6:end));
-                    movefile(solverstatename,solverstatename(6:end));
+                    movefile(modelname,'best_model.caffemodel');
+                    movefile(solverstatename,'best_model.solverstate');
                     
                     % clear others
                     delete('snap_*.caffemodel');

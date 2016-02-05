@@ -36,14 +36,13 @@ Ndays = opts.Days.Count;
 Ncameras = opts.Cameras.Count;
 
 %% Setup the question
-
 same_size = false;
 if same_size == true
     %question_dir = 'frameORtransf';
     question_dir = 'frameORinst';
 end
 
-% whether to create the ImageNet labels
+%% Whether to create also the ImageNet labels
 create_imnetlabels = true;
 
 %% Setup the IO root directories
@@ -58,32 +57,30 @@ if create_fullpath
     output_dir_regtxt_root_fullpath = fullfile([dset_dir '_experiments'], 'registries', 'categorization');
 end
 
-%% Set up the trials
-
-% categories
+%% Categories
 %cat_idx_all = { [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20] };
 cat_idx_all = { [3 8 9 11 12 13 14 15 19 20] };
 
+%% Set up the trials
+
 % objects per category
-obj_lists_all = { 1:NobjPerCat };
+obj_lists_all = { {1:NobjPerCat} };
 
 % transformation
-transf_lists_all = { 1:5 };
+transf_lists_all = { {1:5} };
 
 % day
-day_mappings_all = { 1, 2, 1:2 };
-%day_mappings_all = { 1:2 };
-create_day_list;
+%day_mappings_all = { {1}; {2}; {1:2} };
+day_mappings_all = { {1:2} };
+day_lists_all = create_day_list(day_mappings_all, opts.Days);
 
 % camera
-camera_lists_all = { 1, 2 };
-%camera_lists_all = { 1:2 };
+%camera_lists_all = { {1}; {2} };
+camera_lists_all = { {1:2} };
+
+eval_set = 1;
 
 %% For each experiment, go!
-
-if same_size
-    NsamplesReference = cell(Ncat, 1);
-end
 
 for icat=1:length(cat_idx_all)
     cat_idx = cat_idx_all{icat};
@@ -111,6 +108,10 @@ for icat=1:length(cat_idx_all)
     % Files to be created
     fcreated = zeros(length(obj_lists_all), length(transf_lists_all), length(day_lists_all), length(camera_lists_all));
          
+    if same_size
+        NsamplesReference = zeros(length(cat_idx,1));
+    end
+
     for cc=cat_idx
         
         % create flist_splitted
@@ -125,23 +126,23 @@ for icat=1:length(cat_idx_all)
         flist_splitted(:,1) = [];
         
         for iobj=1:length(obj_lists_all)
-            obj_list = obj_lists_all{iobj};
+            obj_list = obj_lists_all{iobj}{eval_set};
             
             oo_tobeloaded = ismember(flist_splitted(:,1), strrep(cellstr(strcat(cat_names{cc}, num2str(obj_list'))), ' ', '') );
             
             for itransf=1:length(transf_lists_all)
-                transf_list = transf_lists_all{itransf};
+                transf_list = transf_lists_all{itransf}{eval_set};
                 
                 tt_tobeloaded = ismember(flist_splitted(:,2), transf_names(transf_list));
                 
                 for iday=1:length(day_lists_all)
-                    day_list = day_lists_all{iday};
-                    day_mapping = day_mappings_all{iday};
+                    day_list = day_lists_all{iday}{eval_set};
+                    day_mapping = day_mappings_all{iday}{eval_set};
                     
                     dd_tobeloaded = ismember(flist_splitted(:,3), day_names(day_list));
                     
                     for icam=1:length(camera_lists_all)
-                        camera_list = camera_lists_all{icam};
+                        camera_list = camera_lists_all{icam}{eval_set};
                         
                         ee_tobeloaded = ismember(flist_splitted(:,4), camera_names(camera_list));
                         
@@ -176,9 +177,9 @@ for icat=1:length(cat_idx_all)
                         % Eventually reduce samples
                         if same_size==true
                             if icat==1 && iobj==1 && itransf==1 && iday==1 && icam==1
-                                NsamplesReference{opts.Cat(cat_names{cc})} = length(flist_splitted_tobeloaded);
+                                NsamplesReference(cc) = length(flist_splitted_tobeloaded);
                             else
-                                subs_idxs =  round(linspace(1, length(flist_splitted_tobeloaded), NsamplesReference{opts.Cat(cat_names{cc})}));
+                                subs_idxs =  round(linspace(1, length(flist_splitted_tobeloaded), NsamplesReference(cc)));
                                 subs_idxs = unique(subs_idxs);
                                 
                                 flist_splitted_tobeloaded = flist_splitted_tobeloaded(subs_idxs, :);

@@ -4,6 +4,18 @@ clear all;
 FEATURES_DIR = '/data/giulia/REPOS/objrecpipe_mat';
 addpath(genpath(FEATURES_DIR));
 
+vl_feat_setup();
+
+%caffe_dir = '/usr/local/src/robot/caffe';
+caffe_dir = '/data/giulia/REPOS/caffe';
+addpath(genpath(fullfile(caffe_dir, 'matlab')));
+
+caffe.set_mode_gpu();
+gpu_id = 0;
+caffe.set_device(gpu_id);
+
+phase = 'test';
+
 %% Global data dir
 DATA_DIR = '/data/giulia/ICUBWORLD_ULTIMATE';
 
@@ -30,6 +42,11 @@ Ncameras = opts.Cameras.Count;
 mapping = '';
 %mapping = 'tuning';
 
+%% Setup the question
+question_dir = '';
+%question_dir = 'frameORtransf';
+%question_dir = 'frameORinst';
+
 %% Whether to use also the ImageNet labels
 if isempty(mapping)
     use_imnetlabels = true;
@@ -52,12 +69,6 @@ check_input_dir(input_dir_regtxt_root);
 % output root
 exp_dir = fullfile([dset_dir '_experiments'], 'categorization');
 check_output_dir(exp_dir);
-
-%% Setup the question
-
-question_dir = '';
-%question_dir = 'frameORtransf';
-%question_dir = 'frameORinst';
 
 %% Categories
 %cat_idx_all = { [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20] };
@@ -89,9 +100,13 @@ if ~isempty(mapping)
 
     % camera
     camera_lists_all = { {1, 1, 1} };
-
-    set_name_prefixes = {'train_', 'val_'};
+    
+    % sets
     eval_set = 3;
+    tr_set = 1;
+    val_set = 2;
+    
+    set_name_prefixes = {'train_', 'val_'};
     
 else 
 
@@ -114,18 +129,6 @@ else
     
 end
 
-%% Caffe
-
-% general parameters
-caffe_dir = '/usr/local/src/robot/caffe';
-addpath(genpath(fullfile(caffe_dir, 'matlab')));
-caffe.set_mode_gpu();
-gpu_id = 0;
-caffe.set_device(gpu_id);
-
-% train or test
-phase = 'test';
-
 %% Caffe model
 
 model = 'caffenet';
@@ -135,8 +138,10 @@ model = 'caffenet';
 
 if strcmp(model, 'caffenet')
     
-    % net weights
+    % model dir
     model_dir = fullfile(caffe_dir, 'models/bvlc_reference_caffenet/');
+    
+    % net weights
     caffepaths.net_weights = fullfile(model_dir, 'bvlc_reference_caffenet.caffemodel');
     
     % mean_data: mat file already in W x H x C with BGR channels
@@ -319,7 +324,7 @@ end
 
 for icat=1:length(cat_idx_all)
     
-    cat_idx = cat_idx_all{icat}{eval_set};
+    cat_idx = cat_idx_all{icat};
     
     for iobj=1:length(obj_lists_all)
         
@@ -338,6 +343,25 @@ for icat=1:length(cat_idx_all)
                     
                     camera_list = camera_lists_all{icam}{eval_set};
                     
+                    %% Create the test set name
+                    set_name = [strrep(strrep(num2str(obj_list), '   ', '-'), '  ', '-') ...
+                        '_tr_' strrep(strrep(num2str(transf_list), '   ', '-'), '  ', '-') ...
+                        '_day_' strrep(strrep(num2str(day_mapping), '   ', '-'), '  ', '-') ...
+                        '_cam_' strrep(strrep(num2str(camera_list), '   ', '-'), '  ', '-')];
+                    
+                    if ~isempty(mapping)
+                        %% Create the train val folder name
+                        for iset=1:length(set_name_prefixes) 
+                            set_names{iset} = [strrep(strrep(num2str(obj_lists_all{iobj}{iset}), '   ', '-'), '  ', '-') ...
+                            '_tr_' strrep(strrep(num2str(transf_lists_all{itransf}{iset}), '   ', '-'), '  ', '-') ...
+                            '_day_' strrep(strrep(num2str(day_mappings_all{iday}{iset}), '   ', '-'), '  ', '-') ...
+                            '_cam_' strrep(strrep(num2str(camera_lists_all{icam}{iset}), '   ', '-'), '  ', '-')];
+                        end
+                        trainval_dir = cell2mat(strcat(set_name_prefixes(:), '_', set_names(:))');
+                    else
+                        trainval_dir = '';
+                    end
+                    
                     %% Assign IO directories
                     
                     dir_regtxt_relative = fullfile(['Ncat_' num2str(length(cat_idx))], strrep(strrep(num2str(cat_idx), '   ', '-'), '  ', '-'));
@@ -346,13 +370,16 @@ for icat=1:length(cat_idx_all)
                     input_dir_regtxt = fullfile(input_dir_regtxt_root, dir_regtxt_relative);
                     check_input_dir(input_dir_regtxt);
                     
-                    if ~isempty(modality)
-                        output_dir = fullfile(exp_dir, model, dir_regtxt_relative);
-                    else
-                        output_dir = fullfile(exp_dir, model);
-                    end
-                    check_output_dir(output_dir);
+                    output_dir_y = fullfile(exp_dir, model, dir_regtxt_relative, trainval_dir, mapping);
+                    check_output_dir(output_dir_y);
 
+                    if isempty(mapping)
+                        output_dir_fc = fullfile(exp_dir, model, 'scores');                  
+                    else
+                        output_dir_fc = fullfile(output_dir_y, 'scores');
+                    end
+                    check_output_dir(output_dir_y);
+                    
                     %% Set scores to be selected
                     
                     sel_idxs = cell2mat(values(opts.Cat_ImnetLabels));
@@ -363,34 +390,17 @@ for icat=1:length(cat_idx_all)
                     if sum(sel_idxs>score_length)
                         error('You are selecting scores out of net range!');
                     end
-                    
-                    %% Create the test set name
-                    set_name = [strrep(strrep(num2str(obj_list), '   ', '-'), '  ', '-') ...
-                        '_tr_' strrep(strrep(num2str(transf_list), '   ', '-'), '  ', '-') ...
-                        '_day_' strrep(strrep(num2str(day_mapping), '   ', '-'), '  ', '-') ...
-                        '_cam_' strrep(strrep(num2str(camera_list), '   ', '-'), '  ', '-')];
-                    
-                    if ~isempty(mapping)
-                        %% Create the train and val folder name
-                        trainval_dir = '';
-                        for ii=1:length(set_name_prefixes)    
-                            set_name = [set_name_prefixes{ii} strrep(strrep(num2str(obj_lists_all{iobj}{ii}), '   ', '-'), '  ', '-') ...
-                                '_tr_' strrep(strrep(num2str(transf_lists_all{itransf}{ii}), '   ', '-'), '  ', '-') ...
-                                '_day_' strrep(strrep(num2str(day_mappings_all{iday}{ii}), '   ', '-'), '  ', '-') ...
-                                '_cam_' strrep(strrep(num2str(camera_lists_all{icam}{ii}), '   ', '-'), '  ', '-') ...
-                                '_'];
-                            trainval_dir = [trainval_dir set_name];
-                        end
-                    else
-                        trainval_dir = '';
-                    end
-                    
+ 
                     %% Load the registry and Y (true labels)
-                    input_registry = textscan(fullfile(input_dir_regtxt, ['Y_' set_name '.txt']), '%s %d'); 
+                    fid = fopen(fullfile(input_dir_regtxt, [set_name '_Y.txt']));
+                    input_registry = textscan(fid, '%s %d'); 
+                    fclose(fid);
                     Y = input_registry{2};
                     REG = input_registry{1};  
                     if use_imnetlabels
-                        input_registry = textscan(fullfile(input_dir_regtxt, ['Yimnet_' set_name '.txt']), '%s %d'); 
+                        fid = fopen(fullfile(input_dir_regtxt, [set_name '_Yimnet.txt']));
+                        input_registry = textscan(fid, '%s %d'); 
+                        fclose(fid);
                         Yimnet = input_registry{2};
                     end
                     clear input_registry;
@@ -471,8 +481,8 @@ for icat=1:length(cat_idx_all)
                             avg_scores_sel = avg_scores(sel_idxs, :);
                         end
                         
-                        % take central score over crops
                         if strcmp(model, 'caffenet') && isempty(mapping) && oversample
+                            % take central score over crops
                             central_scores = squeeze(scores(:,5,:));
                         end
                         if isempty(mapping)
@@ -506,9 +516,9 @@ for icat=1:length(cat_idx_all)
                             for imidx=1:bsize_curr
                                 for ff=1:nFeat
                                     fc = squeeze(feat{ff}(:,:,imidx));
-                                    outpath = fullfile(output_dir, trainval_dir, mapping, 'scores', feat_names{ff}, fileparts(REG{bstart+imidx-1}));
+                                    outpath = fullfile(output_dir_fc, feat_names{ff}, fileparts(REG{bstart+imidx-1}));
                                     check_output_dir(outpath);
-                                    save(fullfile(output_dir_root_fc, feat_names{ff}, [REG{bstart+imidx-1}(1:(end-4)) '.mat']), 'fc');
+                                    save(fullfile(output_dir_fc, feat_names{ff}, [REG{bstart+imidx-1}(1:(end-4)) '.mat']), 'fc');
                                 end
                             end
                         end
@@ -530,25 +540,30 @@ for icat=1:length(cat_idx_all)
 
                     % compute accuracy and save everything             
                     if isempty(mapping)
-                        [acc, C] = trace_confusion(Yimnet+1, Ypred_avg+1, score_length);
-                        save(fullfile(output_dir_y, ['Yavg_' mapping '_' set_names{iset}((length(set_names_prefix{iset})+1):end) '.mat'] ), 'Ypred_avg', 'acc', 'C', '-v7.3');
-                        [acc, C] = trace_confusion(Y+1, Ypred_avg_sel+1, length(cat_idx));
-                        save(fullfile(output_dir_y, ['Yavg_sel_' mapping '_' set_names{iset}((length(set_names_prefix{iset})+1):end) '.mat'] ), 'Ypred_avg_sel', 'acc', 'C', '-v7.3');                   
-                        if oversample
-                            [acc, C] = trace_confusion(Yimnet+1, Ypred_central+1, score_length);
-                            save(fullfile(output_dir_y, ['Ycentral_' mapping '_' set_names{iset}((length(set_names_prefix{iset})+1):end) '.mat'] ), 'Ypred_central', 'acc', 'C', '-v7.3');
-                            [acc, C] = trace_confusion(Y+1, Ypred_central_sel+1, length(cat_idx));
-                            save(fullfile(output_dir_y, ['Ycentral_sel_' mapping '_' set_names{iset}((length(set_names_prefix{iset})+1):end) '.mat'] ), 'Ypred_central_sel', 'acc', 'C', '-v7.3');
-                        end
-                    else          
-                        [acc, C] = trace_confusion(Y+1, Ypred_avg+1, score_length);
-                        save(fullfile(output_dir_y, ['Yavg_' mapping '_' set_names_prefix{iset} cell2mat(strcat('_', set_names(:))') '.mat'] ), 'Ypred_avg', 'acc', 'C', '-v7.3');
-                        if oversample
-                            [acc, C] = trace_confusion(Y+1, Ypred_central+1, score_length);
-                            save(fullfile(output_dir_y, ['Ycentral_' mapping '_' set_names_prefix{iset} cell2mat(strcat('_', set_names(:))') '.mat'] ), 'Ypred_central', 'acc', 'C', '-v7.3');
-                        end
-                        
+                        [acc, acc_xclass, C] = trace_confusion(Yimnet+1, Ypred_avg+1, score_length);
+                    else
+                        [acc, acc_xclass, C] = trace_confusion(Y+1, Ypred_avg+1, score_length);
+                    end   
+                    save(fullfile(output_dir_y, ['Yavg_' set_name '.mat'] ), 'Ypred_avg', 'acc', 'acc_xclass', 'C', '-v7.3');
+                    
+                    if isempty(mapping)
+                        [acc, acc_xclass, C] = trace_confusion(Y+1, Ypred_avg_sel+1, length(cat_idx));
+                        save(fullfile(output_dir_y, ['Yavg_sel_' set_name '.mat'] ), 'Ypred_avg_sel', 'acc', 'acc_xclass', 'C', '-v7.3');  
                     end
+                    
+                    if oversample
+                        if isempty(mapping)
+                            [acc, acc_xclass, C] = trace_confusion(Yimnet+1, Ypred_central+1, score_length);
+                        else
+                            [acc, acc_xclass, C] = trace_confusion(Y+1, Ypred_central+1, score_length);
+                        end
+                        save(fullfile(output_dir_y, ['Ycentral_' set_name '.mat'] ), 'Ypred_central', 'acc', 'acc_xclass', 'C', '-v7.3');
+                        
+                        if isempty(mapping)
+                            [acc, acc_xclass, C] = trace_confusion(Y+1, Ypred_central_sel+1, length(cat_idx));
+                            save(fullfile(output_dir_y, ['Ycentral_sel_' set_name '.mat'] ), 'Ypred_central_sel', 'acc', 'acc_xclass', 'C', '-v7.3');
+                        end
+                    end                       
 
                 end
             end
