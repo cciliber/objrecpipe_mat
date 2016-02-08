@@ -1,49 +1,16 @@
+function create_sets_offtheshelf_cat(dset, same_size, question_dir, create_fullpath, dset_dir, create_imnetlabels, setlist, eval_set)
 
-clear all;
+cat_idx_all = setlist.cat_idx_all;
+obj_lists_all = setlist.obj_lists_all;
+transf_lists_all = setlist.transf_lists_all;
+day_mappings_all = setlist.day_mappings_all;
+day_lists_all = setlist.day_lists_all;
+camera_lists_all = setlist.camera_lists_all;
 
-FEATURES_DIR = '/data/giulia/REPOS/objrecpipe_mat';
-addpath(genpath(FEATURES_DIR));
-
-%% Global data dir
-
-DATA_DIR = '/data/giulia/ICUBWORLD_ULTIMATE';
-
-create_fullpath = false;
-if create_fullpath
-    dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid384_disp_finaltree');
-    %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb60_disp_finaltree');
-    %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid256_disp_finaltree');
-    %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb30_disp_finaltree');
-end
-
-%% Dataset info
-
-dset_info = fullfile(DATA_DIR, 'iCubWorldUltimate_registries/info/iCubWorldUltimate.txt');
-dset_name = 'iCubWorldUltimate';
-
-opts = ICUBWORLDinit(dset_info);
-cat_names = keys(opts.Cat)';
-%obj_names = keys(opts.Obj)';
-transf_names = keys(opts.Transfs)';
-day_names = keys(opts.Days)';
-camera_names = keys(opts.Cameras)';
-
-Ncat = opts.Cat.Count;
-Nobj = opts.Obj.Count;
-NobjPerCat = opts.ObjPerCat;
-Ntransfs = opts.Transfs.Count;
-Ndays = opts.Days.Count;
-Ncameras = opts.Cameras.Count;
-
-%% Setup the question
-same_size = false;
-if same_size == true
-    %question_dir = 'frameORtransf';
-    question_dir = 'frameORinst';
-end
-
-%% Whether to create also the ImageNet labels
-create_imnetlabels = true;
+cat_names = dset.cat_names;
+transf_names = dset.transf_names;
+day_names = dset.day_names;
+camera_names = dset.camera_names;
 
 %% Setup the IO root directories
 
@@ -56,29 +23,6 @@ output_dir_regtxt_root = fullfile(DATA_DIR, 'iCubWorldUltimate_registries', 'cat
 if create_fullpath
     output_dir_regtxt_root_fullpath = fullfile([dset_dir '_experiments'], 'registries', 'categorization');
 end
-
-%% Categories
-%cat_idx_all = { [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20] };
-cat_idx_all = { [3 8 9 11 12 13 14 15 19 20] };
-
-%% Set up the trials
-
-% objects per category
-obj_lists_all = { {1:NobjPerCat} };
-
-% transformation
-transf_lists_all = { {1:5} };
-
-% day
-%day_mappings_all = { {1}; {2}; {1:2} };
-day_mappings_all = { {1:2} };
-day_lists_all = create_day_list(day_mappings_all, opts.Days);
-
-% camera
-%camera_lists_all = { {1}; {2} };
-camera_lists_all = { {1:2} };
-
-eval_set = 1;
 
 %% For each experiment, go!
 
@@ -230,4 +174,3 @@ for icat=1:length(cat_idx_all)
         end
     end
 end
-                   

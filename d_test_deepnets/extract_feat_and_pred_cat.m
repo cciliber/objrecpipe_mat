@@ -1,66 +1,24 @@
+function extract_feat_and_pred_cat(question_dir, dset_dir, mapping, setlist, trainval_prefixes, trainval_sets, eval_set, caffestuff, extract_features)
 
-clear all;
+cat_idx_all = setlist.cat_idx_all;
+obj_lists_all = setlist.obj_lists_all;
+transf_lists_all = setlist.transf_lists_all;
+day_mappings_all = setlist.day_mappings_all;
+day_lists_all = setlist.day_lists_all;
+camera_lists_all = setlist.camera_lists_all;
 
-FEATURES_DIR = '/data/giulia/REPOS/objrecpipe_mat';
-addpath(genpath(FEATURES_DIR));
-
-vl_feat_setup();
-
-%caffe_dir = '/usr/local/src/robot/caffe';
-caffe_dir = '/data/giulia/REPOS/caffe';
-addpath(genpath(fullfile(caffe_dir, 'matlab')));
-
-caffe.set_mode_gpu();
-gpu_id = 0;
-caffe.set_device(gpu_id);
-
-phase = 'test';
-
-%% Global data dir
-DATA_DIR = '/data/giulia/ICUBWORLD_ULTIMATE';
-
-%% Dataset info
-
-dset_info = fullfile(DATA_DIR, 'iCubWorldUltimate_registries/info/iCubWorldUltimate.txt');
-dset_name = 'iCubWorldUltimate';
-
-opts = ICUBWORLDinit(dset_info);
-cat_names = keys(opts.Cat)';
-%obj_names = keys(opts.Obj)';
-transf_names = keys(opts.Transfs)';
-day_names = keys(opts.Days)';
-camera_names = keys(opts.Cameras)';
-
-Ncat = opts.Cat.Count;
-Nobj = opts.Obj.Count;
-NobjPerCat = opts.ObjPerCat;
-Ntransfs = opts.Transfs.Count;
-Ndays = opts.Days.Count;
-Ncameras = opts.Cameras.Count;
-
-%% Whether the net is finetuned or not
-%mapping = '';
-mapping = 'tuning';
-
-%% Setup the question
-question_dir = '';
-%question_dir = 'frameORtransf';
-%question_dir = 'frameORinst';
-
-%% Whether to use also the ImageNet labels
-if isempty(mapping)
-    use_imnetlabels = true;
-else
-    use_imnetlabels = false;
-end
+net_model = caffestuff.net_model;
+net_weights = caffestuff.net_weights;
+max_bsize = caffestuff.max_bsize;
+NCROPS = caffestuff.NCROPS;
+CROP_SIZE = caffestuff.CROP_SIZE;
+mean_data = caffestuff.mean_data;
+GRID = caffestuff.GRID;
+SHORTER_SIDE = caffestuff.SHORTER_SIDE;
+feat_names = caffestuff.feat_names;
+nFeat = length(feat_names);
 
 %% Setup the IO root directories
-
-% input images
-%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid384_disp_finaltree');
-%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb60_disp_finaltree');
-dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid256_disp_finaltree');
-%dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb30_disp_finaltree');
 
 % input registries
 input_dir_regtxt_root = fullfile(DATA_DIR, 'iCubWorldUltimate_registries', 'categorization');
@@ -70,235 +28,14 @@ check_input_dir(input_dir_regtxt_root);
 exp_dir = fullfile([dset_dir '_experiments'], 'categorization');
 check_output_dir(exp_dir);
 
-%% Categories
-%cat_idx_all = { [2 3 4 5 6 7 8 9 11 12 13 14 15 19 20] };
-cat_idx_all = { [3 8 9 11 12 13 14 15 19 20] };
-
-if ~isempty(mapping)
-    
-    %% Set up train, val and test sets
-    
-    % objects per category
-    Ntest = 1;
-    Nval = 1;
-    Ntrain = NobjPerCat - Ntest - Nval; 
-    obj_lists_all = cell(Ntrain, 1);
-    p = randperm(NobjPerCat);
-    for oo=1:Ntrain 
-        obj_lists_all{oo} = cell(1,3);
-        obj_lists_all{oo}{3} = p(1:Ntest);
-        obj_lists_all{oo}{2} = p((Ntest+1):(Ntest+Nval));
-        obj_lists_all{oo}{1} = p((Ntest+Nval+1):(Ntest+Nval+oo));
-    end
-
-    % transformation
-    transf_lists_all = { {1:Ntransfs, 1:Ntransfs, 1:Ntransfs}; {1, 1, 1} };
-
-    % day
-    day_mappings_all = { {1, 1, 1} };
-    day_lists_all = create_day_list(day_mappings_all, opts.Days);
-
-    % camera
-    camera_lists_all = { {1, 1, 1} };
-    
-    % sets
-    eval_set = 3;
-    trainval_sets = [1 2];
-    trainval_prefixes = {'train_', 'val_'};
-    
-else 
-
-    %% Just set up the test set
-    
-    % objects per category
-    obj_lists_all = { {1:NobjPerCat} };
-    
-    % transformation
-    transf_lists_all = { {1:Ntransfs} };
-    
-    % day
-    day_mappings_all = { {1} };
-    day_lists_all = create_day_list(day_mappings_all, opts.Days);
-    
-    % camera
-    camera_lists_all = { {1} };
-
-    eval_set = 1;
-    
-end
-
-%% Caffe model
-
-model = 'caffenet';
-%model = 'googlenet_paper';
-%model = 'googlenet_caffe';
-%model = 'vgg16';
-
-if strcmp(model, 'caffenet')
-    
-    % model dir
-    model_dir = fullfile(caffe_dir, 'models/bvlc_reference_caffenet/');
-    
-    % net weights
-    caffepaths.net_weights = fullfile(model_dir, 'bvlc_reference_caffenet.caffemodel');
-    
-    % mean_data: mat file already in W x H x C with BGR channels
-    caffepaths.mean_path = fullfile(caffe_dir, 'matlab/+caffe/imagenet/ilsvrc_2012_mean.mat');
-    
-    CROP_SIZE = 227;
-    
-    % remember that actual caffe batch size is max_bsize*NCROPS !!!!
-    max_bsize = 50;
-    
-    % net definition
-    oversample = true;
-    if oversample
-        NCROPS = 10;
-    else
-        NCROPS=1;
-    end
-    caffepaths.net_model = fullfile(model_dir, 'deploy.prototxt');
-    
-    % features to extract
-    extract_features = true;
-    if extract_features
-        feat_names = {'fc6', 'fc7'};
-        nFeat = length(feat_names);
-    end
-    
-elseif strcmp(model, 'googlenet_caffe')
-    
-    % net weights
-    model_dir = fullfile(caffe_dir, 'models/bvlc_googlenet/');
-    caffepaths.net_weights = fullfile(model_dir, 'bvlc_googlenet.caffemodel');
-    
-    CROP_SIZE = 224;
-    
-    % remember that actual caffe batch size is max_batch_size*NCROPS !!!!
-    max_bsize = 512;
-    
-    % net definition
-    oversample = true;
-    if oversample
-        NCROPS = 10;
-    else
-        NCROPS=1;
-    end
-    caffepaths.net_model = fullfile(model_dir, 'deploy.prototxt');
-    
-    % features to extract
-    extract_features = false;
-    if extract_features
-        feat_names = [];
-        nFeat = length(feat_names);
-    end
-    
-elseif strcmp(model, 'googlenet_paper')
-    
-    % net weights
-    model_dir = fullfile(caffe_dir, 'models/bvlc_googlenet/');
-    caffepaths.net_weights = fullfile(model_dir, 'bvlc_googlenet.caffemodel');
-    
-    CROP_SIZE = 224;
-    
-    % whether to consider multiple scales
-    %SHORTER_SIDE = [256 288 320 352];
-    SHORTER_SIDE = 256;
-    
-    % whether to consider multiple crops
-    %GRID = '3-2';
-    %GRID = '1-2';
-    %GRID = '3-1';
-    GRID='1x1';
-    %GRID = '5x5';
-    
-    %% assign number of total crops per image
-    grid1 = strsplit(GRID, '-');
-    grid2 = strsplit(GRID, 'x');
-    if length(grid1)>1
-        grid_side = str2num(grid1{1});
-        sub_grid_side = str2num(grid1{2});
-        if sub_grid_side>1
-            NCROPS = grid_side*(sub_grid_side*sub_grid_side+2)*2;
-        else
-            NCROPS = grid_side;
-        end
-    elseif length(grid2)>1
-        grid_side = str2num(grid2{1});
-        if grid_side>1
-            NCROPS = grid_side*grid_side*2;
-        else
-            NCROPS = 1;
-        end
-    end
-    NCROPS=NCROPS*length(SHORTER_SIDE);
-    
-    % remember that actual caffe batch size is max_batch_size*NCROPS !!!!
-    max_bsize = 2;
-    
-    caffepaths.net_model = fullfile(model_dir, 'deploy.prototxt');
-    
-    % features to extract
-    extract_features = false;
-    if extract_features
-        feat_names = [];
-        nFeat = length(feat_names);
-    end
-    
-elseif strcmp(model, 'vgg16')
-    
-    % net weights
-    model_dir = fullfile(caffe_dir, 'models/VGG/VGG_ILSVRC_16');
-    caffepaths.net_weights = fullfile(model_dir, 'VGG_ILSVRC_16_layers.caffemodel');
-    
-    CROP_SIZE = 224;
-    
-    % whether to consider multiple scales
-    %SHORTER_SIDE = [256 384 512];
-    SHORTER_SIDE = 384;
-    
-    % whether to consider multiple crops
-    %GRID = '3-2';
-    %GRID = '1-2';
-    %GRID = '3-1';
-    %GRID='1x1';
-    GRID = '5x5';
-    
-    %% assign number of total crops per image
-    grid1 = strsplit(GRID, '-');
-    grid2 = strsplit(GRID, 'x');
-    if length(grid1)>1
-        grid_side = str2num(grid1{1});
-        sub_grid_side = str2num(grid1{2});
-        if sub_grid_side>1
-            NCROPS = grid_side*(sub_grid_side*sub_grid_side+2)*2;
-        else
-            NCROPS = grid_side;
-        end
-    elseif length(grid2)>1
-        grid_side = str2num(grid2{1});
-        NCROPS = grid_side*grid_side*2;
-    end
-    NCROPS=NCROPS*length(SHORTER_SIDE);
-    
-    % remember that actual caffe batch size is max_batch_size*NCROPS !!!!
-    max_bsize = 2;
-    
-    caffepaths.net_model = fullfile(model_dir, 'VGG_ILSVRC_16_layers_deploy.prototxt');
-    
-    % features to extract
-    extract_features = true;
-    if extract_features
-        feat_names = {'fc6', 'fc7'};
-        nFeat = length(feat_names);
-    end
-    
-end
+%% Caffe init
+caffe.set_mode_gpu();
+gpu_id = 0;
+caffe.set_device(gpu_id);
 
 %% Caffe net init
-
-% init network
-net = caffe.Net(caffepaths.net_model, caffepaths.net_weights, phase);
+phase = 'test';
+net = caffe.Net(net_model, net_weights, phase);
 
 % reshape according to batch size
 inputshape = net.blobs('data').shape();
@@ -306,16 +43,6 @@ bsize_net = inputshape(4);
 if max_bsize*NCROPS ~= bsize_net
     net.blobs('data').reshape([CROP_SIZE CROP_SIZE 3 max_bsize*NCROPS])
     net.reshape() % optional: the net reshapes automatically before a call to forward()
-end
-
-% load mean
-if strcmp(model, 'caffenet') && isempty(mapping)
-    d = load(caffepaths.mean_path);
-    mean_data = d.mean_data;
-elseif strncmp(model, 'googlenet', length('googlenet')) && isempty(mapping)
-    mean_data = [104 117 123];
-elseif strcmp(model, 'vgg16') && isempty(mapping)
-    mean_data = [103.939 116.779 123.68];
 end
 
 %% For each experiment, go!
@@ -334,7 +61,6 @@ for icat=1:length(cat_idx_all)
             
             for iday=1:length(day_lists_all)
                 
-                day_list = day_lists_all{iday}{eval_set};
                 day_mapping = day_mappings_all{iday}{eval_set};
                 
                 for icam=1:length(camera_lists_all)
@@ -349,6 +75,7 @@ for icat=1:length(cat_idx_all)
                     
                     if ~isempty(mapping)
                         %% Create the train val folder name
+                        set_names = cell(length(trainval_sets),1);
                         for iset=trainval_sets
                             set_names{iset} = [strrep(strrep(num2str(obj_lists_all{iobj}{iset}), '   ', '-'), '  ', '-') ...
                             '_tr_' strrep(strrep(num2str(transf_lists_all{itransf}{iset}), '   ', '-'), '  ', '-') ...
@@ -377,11 +104,11 @@ for icat=1:length(cat_idx_all)
                     else
                         output_dir_fc = fullfile(output_dir_y, 'scores');
                     end
-                    check_output_dir(output_dir_y);
+                    check_output_dir(output_dir_fc);
                     
                     %% Set scores to be selected
                     
-                    sel_idxs = cell2mat(values(opts.Cat_ImnetLabels));
+                    sel_idxs = cell2mat(values(dset.Cat_ImnetLabels));
                     sel_idxs = sel_idxs(cat_idx)+1;
                     % check against number of output units
                     score_length = net.blobs('prob').shape();
@@ -396,7 +123,7 @@ for icat=1:length(cat_idx_all)
                     fclose(fid);
                     Y = input_registry{2};
                     REG = input_registry{1};  
-                    if use_imnetlabels
+                    if isempty(mapping)
                         fid = fopen(fullfile(input_dir_regtxt, [set_name '_Yimnet.txt']));
                         input_registry = textscan(fid, '%s %d'); 
                         fclose(fid);
@@ -571,4 +298,3 @@ for icat=1:length(cat_idx_all)
 end
 
 caffe.reset_all();
-
