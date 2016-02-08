@@ -1,4 +1,4 @@
-function create_sets_offtheshelf_cat(dset, same_size, question_dir, create_fullpath, dset_dir, create_imnetlabels, setlist, eval_set)
+function create_sets_cat(DATA_DIR, dset, same_size, question_dir, create_fullpath, dset_name, create_imnetlabels, setlist, eval_set)
 
 cat_idx_all = setlist.cat_idx_all;
 obj_lists_all = setlist.obj_lists_all;
@@ -21,7 +21,8 @@ check_input_dir(reg_dir);
 % output root dir for registries of the subsets
 output_dir_regtxt_root = fullfile(DATA_DIR, 'iCubWorldUltimate_registries', 'categorization');
 if create_fullpath
-    output_dir_regtxt_root_fullpath = fullfile([dset_dir '_experiments'], 'registries', 'categorization');
+    dset_dir = fullfile(DATA_DIR, dset_name);
+    output_dir_regtxt_root_fullpath = fullfile(DATA_DIR, [dset_name '_experiments'], 'registries', 'categorization');
 end
 
 %% For each experiment, go!
@@ -137,7 +138,7 @@ for icat=1:length(cat_idx_all)
                         % Assign Y and Yimnet
                         Y = ones(nsmpl_xcat, 1)*Y_digits(cat_names{cc});
                         if create_imnetlabels
-                            Yimnet = ones(nsmpl_xcat, 1)*double(opts.Cat_ImnetLabels(cat_names{cc}));
+                            Yimnet = ones(nsmpl_xcat, 1)*double(dset.Cat_ImnetLabels(cat_names{cc}));
                         end
                         
                         % Write output

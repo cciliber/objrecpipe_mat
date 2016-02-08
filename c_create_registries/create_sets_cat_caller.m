@@ -42,6 +42,7 @@ if create_fullpath
     %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb60_disp_finaltree');
     %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid256_disp_finaltree');
     %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb30_disp_finaltree');
+else dset_dir = [];
 end
 
 %% Whether to create also the ImageNet labels
@@ -57,27 +58,25 @@ setlist.cat_idx_all = { [3 8 9 11 12 13 14 15 19 20] };
 %% Set up the trials
 
 % objects per category
-setlist.obj_lists_all = { {1:dset.NobjPerCat} };
+setlist.obj_lists_all = { {1:dset.ObjPerCat} };
 
 % transformation
 setlist.transf_lists_all = { {1:dset.Ntransfs} };
 
 % day
-%setlist.day_mappings_all = { {1}; {2}; {1:2} };
 setlist.day_mappings_all = { {1:2} };
-setlist.day_lists_all = create_day_list(day_mappings_all, dset.Days);
+setlist.day_lists_all = create_day_list(setlist.day_mappings_all, dset.Days);
 
 % camera
-%setlist.camera_lists_all = { {1}; {2} };
-setlist.camera_lists_all = { {1:2} };
+setlist.camera_lists_all = { {1}, {2} };
 
 eval_set = 1;
 
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-create_sets_offtheshelf_cat(dset, ...
+create_sets_cat(DATA_DIR, dset, ...
     same_size, question_dir, ...
-    create_fullpath, dset_dir, ...
+    create_fullpath, dset_name, ...
     create_imnetlabels, ...
     setlist, eval_set);

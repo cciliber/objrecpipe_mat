@@ -66,7 +66,7 @@ ICUBWORLDopts.ObjPerCat = objects_per_cat;
 ICUBWORLDopts.LUT_CatObj = LUT_cat_obj;
 
 ICUBWORLDopts.cat_names = keys(ICUBWORLDopts.Cat)';
-ICUBWORLDopts.obj_names = keys(opts.Obj)';
+ICUBWORLDopts.obj_names = keys(ICUBWORLDopts.Obj)';
 ICUBWORLDopts.transf_names = keys(ICUBWORLDopts.Transfs)';
 ICUBWORLDopts.day_names = keys(ICUBWORLDopts.Days)';
 ICUBWORLDopts.camera_names = keys(ICUBWORLDopts.Cameras)';
