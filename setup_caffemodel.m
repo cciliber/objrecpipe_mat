@@ -1,5 +1,9 @@
 function caffestuff = setup_caffemodel(caffe_dir, model, oversample, overscale, GRID)
 
+caffestuff.model = model;
+caffestuff.oversample = oversample;
+caffestuff.overscale = overscale;
+
 if strcmp(model, 'caffenet')
     
     % model dir

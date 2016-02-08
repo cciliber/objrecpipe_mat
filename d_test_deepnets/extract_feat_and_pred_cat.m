@@ -1,4 +1,4 @@
-function extract_feat_and_pred_cat(DATA_DIR, question_dir, dset_name, mapping, setlist, trainval_prefixes, trainval_sets, eval_set, caffestuff, extract_features)
+function extract_feat_and_pred_cat(DATA_DIR, dset, question_dir, dset_name, mapping, setlist, trainval_prefixes, trainval_sets, eval_set, caffestuff, extract_features)
 
 cat_idx_all = setlist.cat_idx_all;
 obj_lists_all = setlist.obj_lists_all;
@@ -6,6 +6,10 @@ transf_lists_all = setlist.transf_lists_all;
 day_mappings_all = setlist.day_mappings_all;
 day_lists_all = setlist.day_lists_all;
 camera_lists_all = setlist.camera_lists_all;
+
+caffe_model = caffestuff.model;
+oversample = caffestuff.oversample;
+overscale = caffestuff.overscale;
 
 net_model = caffestuff.net_model;
 net_weights = caffestuff.net_weights;
@@ -97,11 +101,11 @@ for icat=1:length(cat_idx_all)
                     input_dir_regtxt = fullfile(input_dir_regtxt_root, dir_regtxt_relative);
                     check_input_dir(input_dir_regtxt);
                     
-                    output_dir_y = fullfile(exp_dir, model, dir_regtxt_relative, trainval_dir, mapping);
+                    output_dir_y = fullfile(exp_dir, caffe_model, dir_regtxt_relative, trainval_dir, mapping);
                     check_output_dir(output_dir_y);
 
                     if isempty(mapping)
-                        output_dir_fc = fullfile(exp_dir, model, 'scores');                  
+                        output_dir_fc = fullfile(exp_dir, caffe_model, 'scores');                  
                     else
                         output_dir_fc = fullfile(output_dir_y, 'scores');
                     end
@@ -142,7 +146,7 @@ for icat=1:length(cat_idx_all)
                     if isempty(mapping)
                         Ypred_avg_sel = zeros(Nsamples,1);
                     end
-                    if strcmp(model, 'caffenet') && isempty(mapping) && oversample
+                    if strcmp(caffe_model, 'caffenet') && isempty(mapping) && oversample
                         Ypred_central = zeros(Nsamples,1);
                         if isempty(mapping)
                             Ypred_central_sel = zeros(Nsamples,1);
@@ -170,9 +174,9 @@ for icat=1:length(cat_idx_all)
                         for imidx=1:bsize_curr
                             im = imread(fullfile(dset_dir, [REG{bstart+imidx-1}(1:(end-4)) '.jpg']));
                             
-                            if (strcmp(model, 'caffenet') || strcmp(model, 'googlenet')) && isempty(mapping)
+                            if (strcmp(caffe_model, 'caffenet') || strcmp(caffe_model, 'googlenet')) && isempty(mapping)
                                 input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image_caffe(im, mean_data, CROP_SIZE, oversample);
-                            elseif strcmp(model, 'vgg16') && isempty(mapping)
+                            elseif strcmp(caffe_model, 'vgg16') && isempty(mapping)
                                 input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image_multiscalecrop(im, mean_data, CROP_SIZE, SHORTER_SIDE, GRID);
                             end
                             
@@ -208,7 +212,7 @@ for icat=1:length(cat_idx_all)
                             avg_scores_sel = avg_scores(sel_idxs, :);
                         end
                         
-                        if strcmp(model, 'caffenet') && isempty(mapping) && oversample
+                        if strcmp(caffe_model, 'caffenet') && isempty(mapping) && oversample
                             % take central score over crops
                             central_scores = squeeze(scores(:,5,:));
                         end
@@ -227,7 +231,7 @@ for icat=1:length(cat_idx_all)
                             maxlabel_avg_sel = maxlabel_avg_sel - 1;
                         end
                         
-                        if strcmp(model, 'caffenet') && isempty(mapping) && oversample
+                        if strcmp(caffe_model, 'caffenet') && isempty(mapping) && oversample
                             % max
                             [~, maxlabel_central] = max(central_scores);
                             maxlabel_central = maxlabel_central - 1;
@@ -255,7 +259,7 @@ for icat=1:length(cat_idx_all)
                         if isempty(mapping)
                             Ypred_avg_sel(bstart:bend) = maxlabel_avg_sel;
                         end
-                        if strcmp(model, 'caffenet') && isempty(mapping) && oversample
+                        if strcmp(caffe_model, 'caffenet') && isempty(mapping) && oversample
                             Ypred_central(bstart:bend) = maxlabel_central;
                             if isempty(mapping)
                                 Ypred_central_sel(bstart:bend) = maxlabel_central_sel;
