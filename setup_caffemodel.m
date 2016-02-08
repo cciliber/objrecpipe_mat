@@ -24,12 +24,16 @@ if strcmp(model, 'caffenet')
     % net input 
     caffestuff.CROP_SIZE = 227;
     
+    % scales
+    caffestuff.SHORTER_SIDE = [];
+    
     % crops
     if oversample
         caffestuff.NCROPS = 10;
     else
         caffestuff.NCROPS = 1;
     end
+    caffestuff.GRID = [];
     
     % batch size, in images
     caffestuff.max_bsize = round(500/caffestuff.NCROPS);
@@ -54,12 +58,16 @@ elseif strcmp(model, 'googlenet_caffe')
     % net input
     caffestuff.CROP_SIZE = 224;
     
+    % scales
+    caffestuff.SHORTER_SIDE = [];
+    
     % crops
     if oversample
         caffestuff.NCROPS = 10;
     else
         caffestuff.NCROPS = 1;
     end
+    caffestuff.GRID = [];
     
     % batch size, in images
     caffestuff.max_bsize = round(500/caffestuff.NCROPS);

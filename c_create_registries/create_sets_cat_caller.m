@@ -20,7 +20,6 @@ DATA_DIR = '/data/giulia/ICUBWORLD_ULTIMATE';
 
 %% Dataset info
 dset_info = fullfile(DATA_DIR, 'iCubWorldUltimate_registries/info/iCubWorldUltimate.txt');
-dset_name = 'iCubWorldUltimate';
 dset = ICUBWORLDinit(dset_info);
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -38,11 +37,11 @@ end
 %% Whether to create fullpath registries
 create_fullpath = false;
 if create_fullpath
-    dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid384_disp_finaltree');
-    %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb60_disp_finaltree');
-    %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_centroid256_disp_finaltree');
-    %dset_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_bb30_disp_finaltree');
-else dset_dir = [];
+    dset_name = 'iCubWorldUltimate_centroid384_disp_finaltree';
+    %dset_name = 'iCubWorldUltimate_bb60_disp_finaltree';
+    %dset_name = 'iCubWorldUltimate_centroid256_disp_finaltree';
+    %dset_name = 'iCubWorldUltimate_bb30_disp_finaltree';
+else dset_name = [];
 end
 
 %% Whether to create also the ImageNet labels
@@ -58,7 +57,7 @@ setlist.cat_idx_all = { [3 8 9 11 12 13 14 15 19 20] };
 %% Set up the trials
 
 % objects per category
-setlist.obj_lists_all = { {1:dset.ObjPerCat} };
+setlist.obj_lists_all = { {1:dset.NobjPerCat} };
 
 % transformation
 setlist.transf_lists_all = { {1:dset.Ntransfs} };

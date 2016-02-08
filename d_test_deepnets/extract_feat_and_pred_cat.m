@@ -1,4 +1,4 @@
-function extract_feat_and_pred_cat(question_dir, dset_dir, mapping, setlist, trainval_prefixes, trainval_sets, eval_set, caffestuff, extract_features)
+function extract_feat_and_pred_cat(DATA_DIR, question_dir, dset_name, mapping, setlist, trainval_prefixes, trainval_sets, eval_set, caffestuff, extract_features)
 
 cat_idx_all = setlist.cat_idx_all;
 obj_lists_all = setlist.obj_lists_all;
@@ -25,7 +25,8 @@ input_dir_regtxt_root = fullfile(DATA_DIR, 'iCubWorldUltimate_registries', 'cate
 check_input_dir(input_dir_regtxt_root);
 
 % output root
-exp_dir = fullfile([dset_dir '_experiments'], 'categorization');
+dset_dir = fullfile(DATA_DIR, dset_name);
+exp_dir = fullfile(DATA_DIR, [dset_name '_experiments'], 'categorization');
 check_output_dir(exp_dir);
 
 %% Caffe init
