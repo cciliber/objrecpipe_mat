@@ -26,10 +26,10 @@ dset = ICUBWORLDinit(dset_info);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Setup the question
-same_size = false;
+same_size = true;
 if same_size == true
     %question_dir = 'frameORtransf';
-    question_dir = 'frameORinst';
+    question_dir = 'ciao';
 else
     question_dir = '';
 end
@@ -57,19 +57,19 @@ setlist.cat_idx_all = { [3 8 9 11 12 13 14 15 19 20] };
 %% Set up the trials
 
 % objects per category
-setlist.obj_lists_all = { {1:dset.NobjPerCat} };
+setlist.obj_lists_all = { {1:5 1:10 1:5} };
 
 % transformation
-setlist.transf_lists_all = { {1:dset.Ntransfs} };
+setlist.transf_lists_all = { {1:dset.Ntransfs 1:dset.Ntransfs 1:dset.Ntransfs} };
 
 % day
-setlist.day_mappings_all = { {1:2} };
+setlist.day_mappings_all = { {1 1 1} };
 setlist.day_lists_all = create_day_list(setlist.day_mappings_all, dset.Days);
 
 % camera
-setlist.camera_lists_all = { {1}, {2} };
+setlist.camera_lists_all = { {1 1 1} };
 
-eval_set = 1;
+eval_sets = 1;
 
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

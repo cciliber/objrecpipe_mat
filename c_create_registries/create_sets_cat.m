@@ -54,7 +54,7 @@ for icat=1:length(cat_idx_all)
     fcreated = zeros(length(obj_lists_all), length(transf_lists_all), length(day_lists_all), length(camera_lists_all));
          
     if same_size
-        NsamplesReference = zeros(length(cat_idx,1));
+        NsamplesReference = zeros(length(cat_idx),1);
     end
 
     for cc=cat_idx
@@ -124,7 +124,7 @@ for icat=1:length(cat_idx_all)
                             if icat==1 && iobj==1 && itransf==1 && iday==1 && icam==1
                                 NsamplesReference(cc) = length(flist_splitted_tobeloaded);
                             else
-                                subs_idxs =  round(linspace(1, length(flist_splitted_tobeloaded), NsamplesReference(cc)));
+                                subs_idxs = round(linspace(1, length(flist_splitted_tobeloaded), NsamplesReference(cc)));
                                 subs_idxs = unique(subs_idxs);
                                 
                                 flist_splitted_tobeloaded = flist_splitted_tobeloaded(subs_idxs, :);
