@@ -42,26 +42,28 @@ mapping = '';
 
 %% Caffe model
 
-model = 'caffenet';
-%model = 'googlenet_caffe';
-oversample = true;
-overscale = [];
-GRID = [];
+caffestuff.model = 'caffenet';
+% caffestuff.SCALING = [];
+% 
+% caffestuff.GRID = []; % NCROPS = 1
+% caffestuff.GRID = '2x2'; % NCROPS = 10
+% caffestuff.GRID = '2x2+s'; % NCROPS = 12
+% 
+% caffestuff.model = 'googlenet_caffe';
+% caffestuff.SCALING = [256 256];
+% 
+% caffestuff.model = 'googlenet_paper';
+% caffestuff.SCALING = [256 NaN; 288 NaN; 320 NaN; 352 NaN];
+% caffestuff.GRID = {'3x1' [] } ; % NCROPS = 3 * 1
+% caffestuff.GRID = {'3x1' '2x2+s'}; % NCROPS = 3 * 12
+% caffestuff.GRID = {'1x1' '2x2+s'}; % NCROPS = 1 * 12;
+% 
+% caffestuff.model = 'vgg16';
+% caffestuff.SCALING = [256 NaN; 384 NaN; 512 NaN];
+% caffestuff.GRID = [];
+% caffestuff.GRID = '5x5';
 
-%model = 'googlenet_paper';
-%oversample = true;
-%overscale = true;
-%GRID = '3-2';
-%GRID = '1-2';
-%GRID = '3-1';
-
-%model = 'vgg16';
-%oversample = true;
-%overscale = true;
-%GRID='1x1';
-%GRID = '5x5';
-
-caffestuff = setup_caffemodel(caffe_dir, model, oversample, overscale, GRID);
+caffestuff = setup_caffemodel(caffe_dir, caffestuff);
 
 %% Whether to extract also the features
 extract_features = true;
@@ -116,11 +118,11 @@ else
     setlist.transf_lists_all = { {1:dset.Ntransfs} };
     
     % day
-    setlist.day_mappings_all = { {2} };
+    setlist.day_mappings_all = { {1} };
     setlist.day_lists_all = create_day_list(setlist.day_mappings_all, dset.Days);
     
     % camera
-    setlist.camera_lists_all = { {1}, {2} };
+    setlist.camera_lists_all = { {1} };
 
     eval_set = 1;
     trainval_sets = [];

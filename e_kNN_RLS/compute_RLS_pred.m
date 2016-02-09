@@ -108,8 +108,7 @@ for icat=1:length(cat_idx_all)
                         
                         % train the model
                         % convert Y to 1-base indexing for GURLS!
-                        model = gurls_train(X{tr_set}, Y{tr_set}+1, X{val_set}, Y{val_set}+1, ...
-                            'kernelfun', 'linear', 'nlambda', 20);
+                        model = gurls_train(X{tr_set}, Y{tr_set}+1, 'Xval', X{val_set}, 'yval', Y{val_set}+1, 'kernelfun', 'linear', 'nlambda', 20);
                         
                         % save the model
                         save(fullfile(output_dir_y, ['gurls_model_' feature '.mat']), 'model', '-v7.3');

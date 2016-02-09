@@ -60,12 +60,13 @@ gurls_model = 'compute'; % 'compute' or 'load'
 setlist.cat_idx_all = { [3 8 9 11 12 13 14 15 19 20] };
 
 % objects
-setlist.obj_lists_all = { {1:NobjPerCat, 1:NobjPerCat, 1:NobjPerCat} };
+setlist.obj_lists_all = { {1:NobjPerCat, 1:5, 1:5} };
 
 % transformation
-%setlist.transf_lists_all = { {1, 1:Ntransfs}; {2, 1:Ntransfs}; {3, 1:Ntransfs}; {4, 1:Ntransfs}};
-setlist.transf_lists_all = { {5, 1:Ntransfs}; {4:5, 1:Ntransfs}; {[2 4:5], 1:Ntransfs}; {2:5, 1:Ntransfs}; {1:Ntransfs, 1:Ntransfs} };
-
+%setlist.transf_lists_all = { {1, 1:Ntransfs, 1}; {2, 1:Ntransfs, 1}; {3, 1:Ntransfs, 1}; {4, 1:Ntransfs, 1}};
+%setlist.transf_lists_all = { {5, 1:Ntransfs, 1}; {4:5, 1:Ntransfs}; {[2 4:5], 1:Ntransfs}; {2:5, 1:Ntransfs}; {1:Ntransfs, 1:Ntransfs} };
+setlist.transf_lists_all = { {1:Ntransfs, 1:Ntransfs, 1:Ntransfs};
+    
 % day
 setlist.day_mappings_all = { {1, 1, 1} };
 setlist.day_lists_all = create_day_list(day_mappings_all, opts.Days);

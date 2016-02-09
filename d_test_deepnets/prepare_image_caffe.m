@@ -1,4 +1,8 @@
-function crops_data = prepare_image_caffe(im, mean_data, CROPPED_DIM, oversample)
+function crops_data = prepare_image_caffe(im, caffestuff)
+
+mean_data = caffestuff.mean_data;
+CROP_SIZE = caffestuff.CROP_SIZE;
+oversample = caffestuff.NCROPS~=1;
 
 % Convert an image returned by Matlab's imread to im_data in caffe's data
 % format: W x H x C with BGR channels
@@ -31,17 +35,17 @@ else
     
 end
 
-indices = [0 MEAN_DIM-CROPPED_DIM] + 1;
+indices = [0 MEAN_DIM-CROP_SIZE] + 1;
 
 if oversample
     
     % oversample (4 corners, center, and their x-axis flips)
-    crops_data = zeros(CROPPED_DIM, CROPPED_DIM, 3, 10, 'single');
+    crops_data = zeros(CROP_SIZE, CROP_SIZE, 3, 10, 'single');
    
     n = 1;
     for i = indices
         for j = indices
-            crops_data(:, :, :, n) = im_data(i:i+CROPPED_DIM-1, j:j+CROPPED_DIM-1, :);
+            crops_data(:, :, :, n) = im_data(i:i+CROP_SIZE-1, j:j+CROP_SIZE-1, :);
             crops_data(:, :, :, n+5) = crops_data(end:-1:1, :, :, n);
             n = n + 1;
         end
@@ -50,7 +54,7 @@ if oversample
     %center = floor(indices(2) / 2) + 1;
     center = floor(indices(2) / 2);
     crops_data(:,:,:,5) = ...
-        im_data(center:center+CROPPED_DIM-1,center:center+CROPPED_DIM-1,:);
+        im_data(center:center+CROP_SIZE-1,center:center+CROP_SIZE-1,:);
     crops_data(:,:,:,10) = crops_data(end:-1:1, :, :, 5);
     
 else
@@ -60,6 +64,6 @@ else
      %center = floor(indices(2) / 2) + 1;
      center = floor(indices(2) / 2);
      crops_data = ...
-        im_data(center:center+CROPPED_DIM-1,center:center+CROPPED_DIM-1,:);
+        im_data(center:center+CROP_SIZE-1,center:center+CROP_SIZE-1,:);
     
 end

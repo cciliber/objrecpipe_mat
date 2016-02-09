@@ -1,4 +1,4 @@
-function finetune_cat(question_dir, dset_dir, setlist, trainval_prefixes, trainval_sets, tr_set, val_set, caffestuff, net_params, solver_params, ...
+function finetune_cat(question_dir, dset_dir, setlist, trainval_prefixes, trainval_sets, tr_set, val_set, caffestuff, net_params, deploy_params, solver_params, ...
     caffe_bin_path, create_lmdb_bin_path, compute_mean_bin_path, parse_log_path)
 
 cat_idx_all = setlist.cat_idx_all;
@@ -103,20 +103,24 @@ for icat=1:length(cat_idx_all)
                     %% Modify net definition
                     
                     net_model_name = 'train_val.prototxt';
+                    deploy_model_name = 'deploy.prototxt';
                     caffestuff.net_model = fullfile(output_dir, net_model_name);
-                       
+                    caffestuff.deploy_model = fullfile(output_dir, deploy_model_name);
+                    
                     net_params.fc8_num_output = num_output;
+                    deploy_params.fc8_num_output = num_output;
                     
                     net_params.train_mean_file = mean_name;
                     net_params.train_source = dbname{tr_set};
                     net_params.val_source = dbname{val_set};
                     net_params.val_mean_file = mean_name;
                       
-                    min(net_params.train_batch_size, Nsamples(tr_set)); % check train batch size 
+                    net_params.train_batch_size = min(net_params.train_batch_size, Nsamples(tr_set)); % check train batch size 
                     net_params.val_batch_size = min(net_params.val_batch_size, Nsamples(val_set)); % check test batch size
     
-                    customize_prototxt(caffestuff.net_model_template, struct2cell(net_params), caffestuff.net_model);
-                      
+                    customize_prototxt(caffestuff.net_model_template, struct2cell(net_params), caffestuff.net_model);   
+                    customize_prototxt(caffestuff.deploy_model_template, struct2cell(deploy_params), caffestuff.deploy_model);
+                    
                     %% Modify solver definition 
                     
                     caffestuff.solver = fullfile(output_dir, 'solver.prototxt');

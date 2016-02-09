@@ -8,19 +8,17 @@ day_lists_all = setlist.day_lists_all;
 camera_lists_all = setlist.camera_lists_all;
 
 caffe_model = caffestuff.model;
-oversample = caffestuff.oversample;
-overscale = caffestuff.overscale;
-
 net_model = caffestuff.net_model;
 net_weights = caffestuff.net_weights;
-max_bsize = caffestuff.max_bsize;
-NCROPS = caffestuff.NCROPS;
 CROP_SIZE = caffestuff.CROP_SIZE;
-mean_data = caffestuff.mean_data;
-GRID = caffestuff.GRID;
-SHORTER_SIDE = caffestuff.SHORTER_SIDE;
+
 feat_names = caffestuff.feat_names;
 nFeat = length(feat_names);
+
+caffestuff = setup_preprocessing(caffestuff);
+central_score_idx = caffestuff.central_score_idx;
+NCROPS = caffestuff.NCROPS;
+max_bsize = caffestuff.max_bsize;
 
 %% Setup the IO root directories
 
@@ -146,7 +144,7 @@ for icat=1:length(cat_idx_all)
                     if isempty(mapping)
                         Ypred_avg_sel = zeros(Nsamples,1);
                     end
-                    if strcmp(caffe_model, 'caffenet') && isempty(mapping) && oversample
+                    if NCROPS>1
                         Ypred_central = zeros(Nsamples,1);
                         if isempty(mapping)
                             Ypred_central_sel = zeros(Nsamples,1);
@@ -174,10 +172,10 @@ for icat=1:length(cat_idx_all)
                         for imidx=1:bsize_curr
                             im = imread(fullfile(dset_dir, [REG{bstart+imidx-1}(1:(end-4)) '.jpg']));
                             
-                            if (strcmp(caffe_model, 'caffenet') || strcmp(caffe_model, 'googlenet')) && isempty(mapping)
-                                input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image_caffe(im, mean_data, CROP_SIZE, oversample);
-                            elseif strcmp(caffe_model, 'vgg16') && isempty(mapping)
-                                input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image_multiscalecrop(im, mean_data, CROP_SIZE, SHORTER_SIDE, GRID);
+                            if isempty(mapping)  
+                                input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image_caffe(im, caffestuff);
+                            else
+                                error('Specify how to init model for tuned models...');
                             end
                             
                         end
@@ -199,7 +197,7 @@ for icat=1:length(cat_idx_all)
                         
                         % reshape, dividing features per image
                         if extract_features
-                            for ff=1:nFeat
+                            for ff=1:nFeat 
                                 feat{ff} = reshape(feat{ff}, [], NCROPS, bsize_curr);
                             end
                         end
@@ -207,41 +205,32 @@ for icat=1:length(cat_idx_all)
                         % take average score over crops
                         % if single crop, avg_scores == scores
                         avg_scores = squeeze(mean(scores, 2));
+                        [~, maxlabel_avg] = max(avg_scores);
+                        maxlabel_avg = maxlabel_avg - 1;
+                        Ypred_avg(bstart:bend) = maxlabel_avg;
                         if isempty(mapping)
                             % select
                             avg_scores_sel = avg_scores(sel_idxs, :);
-                        end
-                        
-                        if strcmp(caffe_model, 'caffenet') && isempty(mapping) && oversample
-                            % take central score over crops
-                            central_scores = squeeze(scores(:,5,:));
-                        end
-                        if isempty(mapping)
-                            % select
-                            central_scores_sel = central_scores(sel_idxs, :);
-                        end
-                        
-                        % max
-                        [~, maxlabel_avg] = max(avg_scores);
-                        maxlabel_avg = maxlabel_avg - 1;
-                        
-                        if isempty(mapping)
-                            % max
                             [~, maxlabel_avg_sel] = max(avg_scores_sel);
                             maxlabel_avg_sel = maxlabel_avg_sel - 1;
+                            Ypred_avg_sel(bstart:bend) = maxlabel_avg_sel;
                         end
                         
-                        if strcmp(caffe_model, 'caffenet') && isempty(mapping) && oversample
-                            % max
+                        if NCROPS>1
+                            % take central score over crops
+                            central_scores = squeeze(scores(:,central_score_idx,:));  
                             [~, maxlabel_central] = max(central_scores);
                             maxlabel_central = maxlabel_central - 1;
+                            Ypred_central(bstart:bend) = maxlabel_central;
                             if isempty(mapping)
-                                % max
+                                % select
+                                central_scores_sel = central_scores(sel_idxs, :);
                                 [~, maxlabel_central_sel] = max(central_scores_sel);
                                 maxlabel_central_sel = maxlabel_central_sel - 1;
+                                Ypred_central_sel(bstart:bend) = maxlabel_central_sel;
                             end
                         end
-                        
+
                         % save extracted features
                         if extract_features
                             for imidx=1:bsize_curr
@@ -252,19 +241,7 @@ for icat=1:length(cat_idx_all)
                                     save(fullfile(output_dir_fc, feat_names{ff}, [REG{bstart+imidx-1}(1:(end-4)) '.mat']), 'fc');
                                 end
                             end
-                        end
-                        
-                        % store all predictions in Y
-                        Ypred_avg(bstart:bend) = maxlabel_avg;
-                        if isempty(mapping)
-                            Ypred_avg_sel(bstart:bend) = maxlabel_avg_sel;
-                        end
-                        if strcmp(caffe_model, 'caffenet') && isempty(mapping) && oversample
-                            Ypred_central(bstart:bend) = maxlabel_central;
-                            if isempty(mapping)
-                                Ypred_central_sel(bstart:bend) = maxlabel_central_sel;
-                            end
-                        end
+                        end             
 
                         fprintf('batch %d out of %d \n', bidx, Nbatches);
                     end
@@ -275,24 +252,24 @@ for icat=1:length(cat_idx_all)
                     else
                         [acc, acc_xclass, C] = trace_confusion(Y+1, Ypred_avg+1, score_length);
                     end   
-                    save(fullfile(output_dir_y, ['Yavg_' set_name '.mat'] ), 'Ypred_avg', 'acc', 'acc_xclass', 'C', '-v7.3');
+                    %save(fullfile(output_dir_y, ['Yavg_' set_name '.mat'] ), 'Ypred_avg', 'acc', 'acc_xclass', 'C', '-v7.3');
                     
                     if isempty(mapping)
                         [acc, acc_xclass, C] = trace_confusion(Y+1, Ypred_avg_sel+1, length(cat_idx));
-                        save(fullfile(output_dir_y, ['Yavg_sel_' set_name '.mat'] ), 'Ypred_avg_sel', 'acc', 'acc_xclass', 'C', '-v7.3');  
+                        %save(fullfile(output_dir_y, ['Yavg_sel_' set_name '.mat'] ), 'Ypred_avg_sel', 'acc', 'acc_xclass', 'C', '-v7.3');  
                     end
                     
-                    if oversample
+                    if NCROPS>1
                         if isempty(mapping)
                             [acc, acc_xclass, C] = trace_confusion(Yimnet+1, Ypred_central+1, score_length);
                         else
                             [acc, acc_xclass, C] = trace_confusion(Y+1, Ypred_central+1, score_length);
                         end
-                        save(fullfile(output_dir_y, ['Ycentral_' set_name '.mat'] ), 'Ypred_central', 'acc', 'acc_xclass', 'C', '-v7.3');
+                        %save(fullfile(output_dir_y, ['Ycentral_' set_name '.mat'] ), 'Ypred_central', 'acc', 'acc_xclass', 'C', '-v7.3');
                         
                         if isempty(mapping)
                             [acc, acc_xclass, C] = trace_confusion(Y+1, Ypred_central_sel+1, length(cat_idx));
-                            save(fullfile(output_dir_y, ['Ycentral_sel_' set_name '.mat'] ), 'Ypred_central_sel', 'acc', 'acc_xclass', 'C', '-v7.3');
+                            %save(fullfile(output_dir_y, ['Ycentral_sel_' set_name '.mat'] ), 'Ypred_central_sel', 'acc', 'acc_xclass', 'C', '-v7.3');
                         end
                     end                       
 

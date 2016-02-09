@@ -83,6 +83,18 @@ if strcmp(model, 'caffenet')
     net_params.accuracy_bottom = 'fc8_icub';
     net_params.loss_bottom = 'fc8_icub';
   
+    % deploy definition
+    caffestuff.deploy_model_template = fullfile(template_prototxts_path, model, 'deploy_template.prototxt');
+    caffestuff.deploy_model_struct_types = fullfile(template_prototxts_path, model, 'deploy_struct_types.txt');
+    caffestuff.deploy_model_struct_values = fullfile(template_prototxts_path, model, 'deploy_struct_values.txt');
+    
+    % deploy initialization 
+    % suypposing that the fine-tuning is the same for all experiments
+    deploy_params = create_struct_from_txt(caffestuff.deploy_model_struct_types, caffestuff.deploy_model_struct_values);              
+    deploy_params.fc8_name = 'fc8_icub';
+    deploy_params.fc8_top = 'fc8_icub';
+    deploy_params.prob_bottom = 'fc8_icub';
+    
     % solver definition
     caffestuff.solver_template = fullfile(template_prototxts_path, model, 'solver_template.prototxt');
     caffestuff.solver_struct_types = fullfile(template_prototxts_path, model, 'solver_struct_types.txt');
@@ -126,5 +138,5 @@ val_set = trainval_sets(2);
 finetune_cat(question_dir, ...
     dset_dir, ...
     setlist, trainval_prefixes, trainval_sets, tr_set, val_set, ...
-    caffestuff, net_params, solver_params, ...
+    caffestuff, net_params, deploy_params, solver_params, ...
     caffe_bin_path, create_lmdb_bin_path, compute_mean_bin_path, parse_log_path);
