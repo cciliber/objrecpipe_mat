@@ -26,7 +26,7 @@ caffe.set_device(gpu_id);
 %% Caffe preprocesing initialization
 
 prep = caffestuff.preprocessing;
-NCROPS_grid = (prep.GRID*prep.GRID+even(prep.GRID)+prep.GRID.resize)*(prep.GRID.mirror+1);
+NCROPS_grid = (prep.GRID.nodes*prep.GRID.nodes+mod(prep.GRID.nodes+1,2)+prep.GRID.resize)*(prep.GRID.mirror+1);
 
 if ~isempty(prep.OUTER_GRID)
     NCROPS_scale = NCROPS_grid*prep.OUTER_GRID; 
@@ -34,14 +34,15 @@ else
     NCROPS_scale = NCROPS_grid;
 end
 
-NCROPS = NCROPS_scale*NSCALES; 
-
-if ~isfield(caffestuff.preprocessing, 'SCALING') 
+if ~isfield(prep, 'SCALING') 
     centralscale = 1;
-elseif size(caffestuff.preprocessing.SCALING,1)==1
+    NSCALES = 1;
+elseif size(prep.SCALING.scales,1)==1
     centralscale = 1;
+    NSCALES = 1;
 else
     centralscale = prep.SCALING.centralscale;
+    NSCALES = size(prep.SCALING.scales, 1);
 end
 
 central_score_idx = (centralscale-1)*NCROPS_scale;
@@ -50,11 +51,13 @@ if ~isempty(prep.OUTER_GRID)
     central_score_idx = central_score_idx + NCROPS_grid*(prep.OUTER_GRID-1)/2;
 end
 
-if odd(prep.GRID)
-    central_score_idx = central_score_idx + ceil(prep.GRID*prep.GRID/2);
+if mod(prep.GRID.nodes, 2)
+    central_score_idx = central_score_idx + ceil(prep.GRID.nodes*prep.GRID.nodes/2);
 else
-    central_score_idx = central_score_idx + prep.GRID*prep.GRID+1;
+    central_score_idx = central_score_idx + prep.GRID.nodes*prep.GRID.nodes+1;
 end
+
+NCROPS = NCROPS_scale*NSCALES; 
 
 max_bsize = round(500/NCROPS);
 
@@ -62,7 +65,7 @@ if isempty(mapping)
     
     %% Setup caffe model
     caffe_model_name = caffestuff.net_name;
-    caffestuff = setup_caffemodel(caffe_dir, caffestuff, mapping);
+    caffestuff = setup_caffemodel(caffestuff.caffe_dir, caffestuff, mapping);
     net = caffe.Net(caffestuff.net_model, caffestuff.net_weights, 'test');
     % reshape according to batch size
     inputshape = net.blobs('data').shape();
@@ -73,7 +76,7 @@ if isempty(mapping)
         net.reshape() % optional: the net reshapes automatically before a call to forward()
     end   
     % features to extract
-    if any(~ismember(blob_names, caffestuff.feat_names))
+    if any(~ismember(caffestuff.feat_names, net.blob_names))
         error('Blob not present!');
     end
     feat_names = caffestuff.feat_names;
@@ -230,7 +233,7 @@ for icat=1:length(cat_idx_all)
                             im = imread(fullfile(dset_dir, [REG{bstart+imidx-1}(1:(end-4)) '.jpg']));
                             
                             if isempty(mapping)  
-                                input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image_caffe(im, caffestuff.preprocessing, caffestuff.mean_data, caffestuff.CROP_SIZE);
+                                input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image(im, prep, caffestuff.mean_data, CROP_SIZE);
                             else
                                 error('Specify how to init model for tuned models...');
                             end
