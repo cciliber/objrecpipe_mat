@@ -1,17 +1,11 @@
-function crops_data = prepare_image(im, caffestuff)
-
-mean_data = caffestuff.mean_data;
-
-GRID = caffestuff.GRID;
-SCALING = caffestuff.SCALING;
+function crops_data = prepare_image(im, prep, mean_data, CROP_SIZE)
 
 %% Convert an image returned by Matlab's imread 
+
 % to caffe's data format: W x H x C with BGR channels
 im_data = im(:, :, [3, 2, 1]);  % permute channels from RGB to BGR
 im_data = permute(im_data, [2, 1, 3]);  % flip width and height
 im_data = single(im_data);  % convert from uint8 to single
-
-IMAGE_DIM = size(im_data);
 
 %% Subtract mean
 
@@ -20,75 +14,75 @@ if isequal(size(mean_data(:)), [3 1])
     for ii=1:3
         im_data(:,:,ii) = im_data(:,:,ii) - mean_data(ii);
     end
+    rescaled = false;
 else
     % mean data: mat file already in W x H x C with BGR channels
     MEAN_W = size(mean_data,1);
     MEAN_H = size(mean_data,2);
-    if ~isequal(IMAGE_DIM(1:2), [MEAN_W MEAN_H])
+    IMAGE_W = size(im_data,1);
+    IMAGE_H = size(im_data,2);
+    if ~isequal([IMAGE_W IMAGE_H], [MEAN_W MEAN_H])
         im_data = imresize(im_data, [MEAN_W MEAN_H], 'bilinear');
     end
+    prep.SCALING = { {MEAN_W MEAN_H} };
+    rescaled = true;
     im_data = im_data - mean_data;
 end
 
 %% Determine the preprocessing operations
 
-N_SCALES = size(SCALING,1);
-
-N_LEVELS = numel(GRID);
-
-
-grid1 = strsplit(GRID, '-');
-if length(grid1)>1
-    
-    grid_side = str2num(grid1{1});
-    if grid_side>1
-        grid_nodes = linspace(0,1,grid_side);
-    else
-        grid_nodes = 0.5;
+if prep.SCALING.aspect_ratio
+    if size(prep.SCALING, 2)>1
+        error('');
     end
-    
-    sub_grid_side = str2num(grid1{2});
-    if sub_grid_side>1
-        sub_grid_nodes = linspace(0,1,sub_grid_side);
-        NCROPS = grid_side*(sub_grid_side*sub_grid_side+2)*2;
-    else
-        sub_grid_nodes = 0.5;
-        NCROPS = grid_side;
+else
+    if size(prep.SCALING, 2)==1
+        error('');
     end
 end
+NSCALES = size(prep.SCALING, 1);
 
-grid2 = strsplit(GRID, 'x');
+NCROPS = (prep.GRID*prep.GRID+even(prep.GRID)+prep.resize)*(mirror+1);
 
-elseif length(grid2)>1
+if ~isempty(prep.OUTER_GRID)
+    crops_data = zeros(CROP_SIZE, CROP_SIZE, 3, NCROPS*prep.OUTER_GRID*NSCALES, 'single'); 
+else
+    crops_data = zeros(CROP_SIZE, CROP_SIZE, 3, NCROPS*NSCALES, 'single'); 
+end
     
-    grid_side = str2num(grid2{1});
-    if grid_side>1
-        grid_nodes = linspace(0,1,grid_side);
-        NCROPS = grid_side*grid_side*2;
-    else 
-        grid_nodes = 0.5;
-        NCROPS = 1;
+for is=1:NSCALES
+    
+    if rescaled==false
+        if prep.SCALING.aspect_ratio==false
+            im_data_resized = imresize(im_data, [prep.SCALING(is,1) prep.SCALING(is,2)], 'bilinear');   
+        else
+            new_dim = [NaN NaN];
+            if size(im_data,1) < size(im_data,2)
+                new_dim(1) = prep.SCALING(is,1);
+            else
+                new_dim(2) = prep.SCALING(is,2);
+            end
+            im_data_resized = imresize(im_data, new_dim, 'bilinear'); 
+        end
+    else
+        im_data_resized = im_data;
     end
     
-end
-
-
-
-NCROPS=NCROPS*N_SCALES;
-crops_data = zeros(CROPPED_DIM, CROPPED_DIM, 3, NCROPS, 'single');
-
-
-
-
-
-
-SCALING = caffestuff.scaling;
-if ~isempty(SCALING)
-    
-    if 
-    
-    if ~isequal(IMAGE_DIM(1:2), [MEAN_DIM MEAN_DIM])
-        im_data = imresize(im_data, [MEAN_DIM MEAN_DIM], 'bilinear');
+    if ~isempty(prep.OUTER_GRID)
+        
+        if prep.SCALING(is,1)==prep.SCALING(is,2)
+            error('Specifying square resize and non empty OUTER_GRID');
+        end
+        outer_crops = compute_crops(im_data_resized, prep.OUTER_GRID);
+        
+        crops = zeros(CROP_SIZE, CROP_SIZE, 3, NCROPS*prep.OUTER_GRID, 'single');
+        for ic=1:prep.OUTER_GRID
+            crops(:,:,:,((ic-1)*NCROPS+1):ic*NCROPS) = compute_grid(outer_crops(:,:,:,ic), prep.GRID, prep.resize, prep.mirror);
+        end
+        crops_data(:,:,:, ((is-1)*NCROPS*prep.OUTER_GRID + 1) : (is*NCROPS*prep.OUTER_GRID) ) = crops;
+    else
+        crops = compute_grid(im_data_resized, CROP_SIZE, prep.GRID, prep.resize, prep.mirror);
+        crops_data(:,:,:, ((is-1)*NCROPS + 1) : (is*NCROPS) ) = crops;
     end
     
 end

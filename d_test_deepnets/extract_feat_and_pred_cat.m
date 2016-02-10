@@ -15,10 +15,38 @@ CROP_SIZE = caffestuff.CROP_SIZE;
 feat_names = caffestuff.feat_names;
 nFeat = length(feat_names);
 
-caffestuff = setup_preprocessing(caffestuff);
-central_score_idx = caffestuff.central_score_idx;
-NCROPS = caffestuff.NCROPS;
-max_bsize = caffestuff.max_bsize;
+prep = caffestuff.preprocessing;
+NCROPS_grid = (prep.GRID*prep.GRID+even(prep.GRID)+prep.GRID.resize)*(prep.GRID.mirror+1);
+
+if ~isempty(prep.OUTER_GRID)
+    NCROPS_scale = NCROPS_grid*prep.OUTER_GRID; 
+else
+    NCROPS_scale = NCROPS_grid;
+end
+
+NCROPS = NCROPS_scale*NSCALES; 
+
+if ~isfield(caffestuff.preprocessing, 'SCALING') 
+    centralscale = 1;
+elseif size(caffestuff.preprocessing.SCALING,1)==1
+    centralscale = 1;
+else
+    centralscale = prep.SCALING.centralscale;
+end
+
+central_score_idx = (centralscale-1)*NCROPS_scale;
+
+if ~isempty(prep.OUTER_GRID)
+    central_score_idx = central_score_idx + NCROPS_grid*(prep.OUTER_GRID-1)/2;
+end
+
+if odd(prep.GRID)
+    central_score_idx = central_score_idx + ceil(prep.GRID*prep.GRID/2);
+else
+    central_score_idx = central_score_idx + prep.GRID*prep.GRID+1);
+end
+
+max_bsize = round(500/NCROPS);
 
 %% Setup the IO root directories
 
@@ -173,7 +201,7 @@ for icat=1:length(cat_idx_all)
                             im = imread(fullfile(dset_dir, [REG{bstart+imidx-1}(1:(end-4)) '.jpg']));
                             
                             if isempty(mapping)  
-                                input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image_caffe(im, caffestuff);
+                                input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image_caffe(im, caffestuff.preprocessing, caffestuff.mean_data, caffestuff.CROP_SIZE);
                             else
                                 error('Specify how to init model for tuned models...');
                             end

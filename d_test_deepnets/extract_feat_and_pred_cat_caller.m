@@ -43,25 +43,36 @@ mapping = '';
 %% Caffe model
 
 caffestuff.model = 'caffenet';
-% caffestuff.SCALING = [];
-% 
-% caffestuff.GRID = []; % NCROPS = 1
-% caffestuff.GRID = '2x2'; % NCROPS = 10
-% caffestuff.GRID = '2x2+s'; % NCROPS = 12
-% 
-% caffestuff.model = 'googlenet_caffe';
-% caffestuff.SCALING = [256 256];
-% 
-% caffestuff.model = 'googlenet_paper';
-% caffestuff.SCALING = [256 NaN; 288 NaN; 320 NaN; 352 NaN];
-% caffestuff.GRID = {'3x1' [] } ; % NCROPS = 3 * 1
-% caffestuff.GRID = {'3x1' '2x2+s'}; % NCROPS = 3 * 12
-% caffestuff.GRID = {'1x1' '2x2+s'}; % NCROPS = 1 * 12;
-% 
-% caffestuff.model = 'vgg16';
-% caffestuff.SCALING = [256 NaN; 384 NaN; 512 NaN];
-% caffestuff.GRID = [];
-% caffestuff.GRID = '5x5';
+caffestuff.preprocessing.OUTER_GRID = []; % 1 or 3 or []
+caffestuff.preprocessing.GRID = 2; 
+caffestuff.preprocessing.GRID.resize = false;
+caffestuff.preprocessing.GRID.mirror = true;
+
+caffestuff.model = 'googlenet_caffe';
+caffestuff.preprocessing.SCALING = [256 256];
+caffestuff.preprocessing.SCALING.aspect_ratio = false;
+caffestuff.preprocessing.OUTER_GRID = []; % 1 or 3 or []
+caffestuff.preprocessing.GRID = 2; 
+caffestuff.preprocessing.GRID.resize = false;
+caffestuff.preprocessing.GRID.mirror = true;
+
+caffestuff.model = 'googlenet_paper';
+caffestuff.preprocessing.SCALING = [256; 288; 320; 352];
+caffestuff.preprocessing.SCALING.aspect_ratio = true;
+caffestuff.preprocessing.SCALING.central_scale = 1;
+caffestuff.preprocessing.OUTER_GRID = 3; % 1 or 3 or []
+caffestuff.preprocessing.GRID = 2; 
+caffestuff.preprocessing.GRID.resize = true;
+caffestuff.preprocessing.GRID.mirror = true;
+
+caffestuff.model = 'vgg16';
+caffestuff.preprocessing.SCALING = [256; 384; 512];
+caffestuff.preprocessing.SCALING.aspect_ratio = true;
+caffestuff.preprocessing.SCALING.central_scale = 2;
+caffestuff.preprocessing.OUTER_GRID = []; % 1 or 3 or []
+caffestuff.preprocessing.GRID = 5; 
+caffestuff.preprocessing.GRID.resize = false;
+caffestuff.preprocessing.GRID.mirror = true;
 
 caffestuff = setup_caffemodel(caffe_dir, caffestuff);
 
