@@ -7,13 +7,23 @@ day_mappings_all = setlist.day_mappings_all;
 day_lists_all = setlist.day_lists_all;
 camera_lists_all = setlist.camera_lists_all;
 
-caffe_model = caffestuff.model;
-net_model = caffestuff.net_model;
-net_weights = caffestuff.net_weights;
-CROP_SIZE = caffestuff.CROP_SIZE;
+%% Setup the IO root directories
 
-feat_names = caffestuff.feat_names;
-nFeat = length(feat_names);
+% input registries
+input_dir_regtxt_root = fullfile(DATA_DIR, 'iCubWorldUltimate_registries', 'categorization');
+check_input_dir(input_dir_regtxt_root);
+
+% output root
+dset_dir = fullfile(DATA_DIR, dset_name);
+exp_dir = fullfile(DATA_DIR, [dset_name '_experiments'], 'categorization');
+check_output_dir(exp_dir);
+
+%% Caffe init
+caffe.set_mode_gpu();
+gpu_id = 0;
+caffe.set_device(gpu_id);
+
+%% Caffe preprocesing initialization
 
 prep = caffestuff.preprocessing;
 NCROPS_grid = (prep.GRID*prep.GRID+even(prep.GRID)+prep.GRID.resize)*(prep.GRID.mirror+1);
@@ -43,37 +53,32 @@ end
 if odd(prep.GRID)
     central_score_idx = central_score_idx + ceil(prep.GRID*prep.GRID/2);
 else
-    central_score_idx = central_score_idx + prep.GRID*prep.GRID+1);
+    central_score_idx = central_score_idx + prep.GRID*prep.GRID+1;
 end
 
 max_bsize = round(500/NCROPS);
 
-%% Setup the IO root directories
+if isempty(mapping)
+    
+    %% Setup caffe model
+    caffe_model_name = caffestuff.net_name;
+    caffestuff = setup_caffemodel(caffe_dir, caffestuff, mapping);
+    net = caffe.Net(caffestuff.net_model, caffestuff.net_weights, 'test');
+    % reshape according to batch size
+    inputshape = net.blobs('data').shape();
+    CROP_SIZE = inputshape(1);
+    bsize_net = inputshape(4);
+    if max_bsize*NCROPS ~= bsize_net
+        net.blobs('data').reshape([CROP_SIZE CROP_SIZE 3 max_bsize*NCROPS])
+        net.reshape() % optional: the net reshapes automatically before a call to forward()
+    end   
+    % features to extract
+    if any(~ismember(blob_names, caffestuff.feat_names))
+        error('Blob not present!');
+    end
+    feat_names = caffestuff.feat_names;
+    nFeat = length(feat_names);
 
-% input registries
-input_dir_regtxt_root = fullfile(DATA_DIR, 'iCubWorldUltimate_registries', 'categorization');
-check_input_dir(input_dir_regtxt_root);
-
-% output root
-dset_dir = fullfile(DATA_DIR, dset_name);
-exp_dir = fullfile(DATA_DIR, [dset_name '_experiments'], 'categorization');
-check_output_dir(exp_dir);
-
-%% Caffe init
-caffe.set_mode_gpu();
-gpu_id = 0;
-caffe.set_device(gpu_id);
-
-%% Caffe net init
-phase = 'test';
-net = caffe.Net(net_model, net_weights, phase);
-
-% reshape according to batch size
-inputshape = net.blobs('data').shape();
-bsize_net = inputshape(4);
-if max_bsize*NCROPS ~= bsize_net
-    net.blobs('data').reshape([CROP_SIZE CROP_SIZE 3 max_bsize*NCROPS])
-    net.reshape() % optional: the net reshapes automatically before a call to forward()
 end
 
 %% For each experiment, go!
@@ -105,6 +110,7 @@ for icat=1:length(cat_idx_all)
                         '_cam_' strrep(strrep(num2str(camera_list), '   ', '-'), '  ', '-')];
                     
                     if ~isempty(mapping)
+                        
                         %% Create the train val folder name
                         set_names = cell(length(trainval_sets),1);
                         for iset=trainval_sets
@@ -115,8 +121,30 @@ for icat=1:length(cat_idx_all)
                         end
                         trainval_dir = cell2mat(strcat(trainval_prefixes(:), set_names(:), '_')');
                         trainval_dir = trainval_dir(1:end-1);
+                        
+                        %% Setup caffe model
+                        caffe_model_name = caffestuff.net_name;  
+                        caffestuff = setup_caffemodel(trainval_dir, caffestuff, mapping);
+                        net = caffe.Net(caffestuff.net_model, caffestuff.net_weights, 'test');
+                        % reshape according to batch size
+                        inputshape = net.blobs('data').shape();
+                        CROP_SIZE = inputshape(1);
+                        bsize_net = inputshape(4);
+                        if max_bsize*NCROPS ~= bsize_net
+                            net.blobs('data').reshape([CROP_SIZE CROP_SIZE 3 max_bsize*NCROPS])
+                            net.reshape() % optional: the net reshapes automatically before a call to forward()
+                        end   
+                        % features to extract
+                        if any(~ismember(blob_names, caffestuff.feat_names))
+                            error('Blob not present!');
+                        end
+                        feat_names = caffestuff.feat_names;
+                        nFeat = length(feat_names);
+                        
                     else
+                        
                         trainval_dir = '';
+                        
                     end
                     
                     %% Assign IO directories
@@ -127,27 +155,28 @@ for icat=1:length(cat_idx_all)
                     input_dir_regtxt = fullfile(input_dir_regtxt_root, dir_regtxt_relative);
                     check_input_dir(input_dir_regtxt);
                     
-                    output_dir_y = fullfile(exp_dir, caffe_model, dir_regtxt_relative, trainval_dir, mapping);
+                    output_dir_y = fullfile(exp_dir, caffe_model_name, dir_regtxt_relative, trainval_dir, mapping);
                     check_output_dir(output_dir_y);
 
                     if isempty(mapping)
-                        output_dir_fc = fullfile(exp_dir, caffe_model, 'scores');                  
+                        output_dir_fc = fullfile(exp_dir, caffe_model_name, 'scores');                  
                     else
                         output_dir_fc = fullfile(output_dir_y, 'scores');
                     end
                     check_output_dir(output_dir_fc);
                     
-                    %% Set scores to be selected
-                    
-                    sel_idxs = cell2mat(values(dset.Cat_ImnetLabels));
-                    sel_idxs = sel_idxs(cat_idx)+1;
-                    % check against number of output units
-                    score_length = net.blobs('prob').shape();
-                    score_length = score_length(1);
-                    if sum(sel_idxs>score_length)
-                        error('You are selecting scores out of net range!');
+                    %% Eventually set scores to be selected
+                    if isempty(mapping)
+                        sel_idxs = cell2mat(values(dset.Cat_ImnetLabels));
+                        sel_idxs = sel_idxs(cat_idx)+1;
+                        % check against number of output units
+                        score_length = net.blobs('prob').shape();
+                        score_length = score_length(1);
+                        if sum(sel_idxs>score_length)
+                            error('You are selecting scores out of net range!');
+                        end
                     end
- 
+                    
                     %% Load the registry and Y (true labels)
                     fid = fopen(fullfile(input_dir_regtxt, [set_name '_Y.txt']));
                     input_registry = textscan(fid, '%s %d'); 
