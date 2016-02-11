@@ -33,7 +33,7 @@ function question = create_question(question_root_path,question_name,question_co
 end
 
 
-function wrapper_create_sets_cat(question,setup_data)
+function wrapper_create_sets_cat(setup_data,question)
 
     % create the question!
     new_create_sets_cat(setup_data.DATA_DIR,...
