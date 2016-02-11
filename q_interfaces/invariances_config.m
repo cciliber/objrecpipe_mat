@@ -16,13 +16,13 @@ setlist.create_imnetlabels = true;
 setlist.cat_idx_all = { [3 8 9 11 12 13 14 15 19 20] };
 
 % objects per category
-setlist.obj_lists_all = { {1:5 1:10 1:5} };
+setlist.obj_lists_all = { {1:3 9 10} {1:7 8:9 10} };
 
 % transformation
 setlist.transf_lists_all = { {1:setup_data.dset.Ntransfs 1:setup_data.dset.Ntransfs 1:setup_data.dset.Ntransfs} };
 
 % day
-setlist.day_mappings_all = { {1 1 1} };
+setlist.day_mappings_all = { {1 1 2} };
 setlist.day_lists_all = create_day_list(setlist.day_mappings_all, setup_data.dset.Days);
 
 % camera
@@ -30,7 +30,7 @@ setlist.camera_lists_all = { {1 1 1} };
 
 
 % keep the same #examples across datasets training | val | test
-setlist.same_size = [1 0 0];
+setlist.same_size = [1 1 0];
 
 
 

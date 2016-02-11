@@ -27,7 +27,7 @@ function setup_data = setup_machine()
 
     
     setup_data.caffe_dir    = caffe_dir;
-    setup_data.dset_info    = dset;
+    setup_data.dset         = dset;
     setup_data.DATA_DIR     = DATA_DIR;
     
     
