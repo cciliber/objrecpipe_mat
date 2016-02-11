@@ -1,4 +1,4 @@
-function caffestuff = setup_caffemodel(net_dir, caffestuff, mapping)
+function caffestuff = setup_caffemodel(net_dir, caffestuff, mapping, model_dirname)
 
 if isempty(mapping)
     
@@ -69,7 +69,7 @@ if isempty(mapping)
 elseif strcmp(mapping, 'tuning')
     
     % model dir
-    caffestuff.net_dir = net_dir;
+    caffestuff.net_dir = fullfile(net_dir, mapping, model_dirname, 'model');
     
     % net weights
     caffestuff.net_weights = fullfile(caffestuff.net_dir, 'best_model.caffemodel');

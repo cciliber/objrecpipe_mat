@@ -1,4 +1,4 @@
-function finetune_cat(question_dir, dset_dir, setlist, trainval_prefixes, trainval_sets, tr_set, val_set, caffestuff, net_params, deploy_params, solver_params, ...
+function finetune_cat(DATA_DIR, question_dir, model_dirname, dset_dir, setlist, trainval_prefixes, trainval_sets, tr_set, val_set, caffestuff, net_params, deploy_params, solver_params, ...
     caffe_bin_path, create_lmdb_bin_path, compute_mean_bin_path, parse_log_path)
 
 cat_idx_all = setlist.cat_idx_all;
@@ -7,6 +7,12 @@ transf_lists_all = setlist.transf_lists_all;
 day_mappings_all = setlist.day_mappings_all;
 day_lists_all = setlist.day_lists_all;
 camera_lists_all = setlist.camera_lists_all;
+
+
+
+MEAN_W = caffestuff.MEAN_W;
+MEAN_H = caffestuff.MEAN_H;
+
 
 %% Set up the IO root directories
 
@@ -62,7 +68,7 @@ for icat=1:length(cat_idx_all)
                     input_dir_regtxt = fullfile(input_dir_regtxt_root, dir_regtxt_relative);
                     check_input_dir(input_dir_regtxt);
                     
-                    output_dir = fullfile(exp_dir, model, dir_regtxt_relative, trainval_dir, 'tuning', 'model');
+                    output_dir = fullfile(exp_dir, caffestuff.net_name, dir_regtxt_relative, trainval_dir, 'tuning', model_dirname, 'model');
                     check_output_dir(output_dir);
                     
                     %% Create lmdbs
@@ -75,13 +81,17 @@ for icat=1:length(cat_idx_all)
                         % create lmdb         
                         filelist = fullfile(input_dir_regtxt, [set_names{iset} '_Y.txt']);
                         
-                        dbname{iset} = [trainval_prefixes{iset} '_Y_lmdb'];   
+                        dbname{iset} = [trainval_prefixes{iset} 'Y_lmdb'];   
                         dbpath{iset} = fullfile(output_dir, dbname{iset});
 
+                        if exist(dbpath{iset}, 'dir')
+                            warning(sprintf('Going to remove and recreate the db: %s', dbpath{iset}));
+                            rmdir(dbpath{iset}, 's');
+                        end
                         command = sprintf('%s --resize_width=%d --resize_height=%d --shuffle %s %s %s', create_lmdb_bin_path, MEAN_W, MEAN_H, [dset_dir '/'], filelist, dbpath{iset});
                         [status, cmdout] = system(command);
                         if status~=0
-                            error(cmdout);
+                           error(cmdout);
                         end
                         
                         % get number of samples
@@ -91,13 +101,13 @@ for icat=1:length(cat_idx_all)
                     
                     %% Compute train mean image (binaryproto)
 
-                    mean_name = [trainval_prefixes{tr_set} '_mean.binaryproto'];                   
+                    mean_name = [trainval_prefixes{tr_set} 'mean.binaryproto'];                   
                     mean_path = fullfile(output_dir, mean_name);
                         
                     command = sprintf('%s %s %s', compute_mean_bin_path, dbpath{tr_set}, mean_path);
                     [status, cmdout] = system(command);
                     if status~=0
-                       error(cmdout);
+                      error(cmdout);
                     end
  
                     %% Modify net definition
@@ -158,6 +168,12 @@ for icat=1:length(cat_idx_all)
                     
                     gpu_id = 0;
                     
+                    
+                    %%%%%% WARNING
+                    matlab_interface = false;
+                    %%%%%%%%%%%%%%
+                    
+                    
                     if matlab_interface
                         % using Matlab interface
                         caffe.set_mode_gpu(); 
@@ -184,22 +200,24 @@ for icat=1:length(cat_idx_all)
                     if status~=0
                        error(cmdout);
                     end
-                    
-                    cd(curr_dir);
-                    
+ 
                     % maximize val accuracy
                     T = readtable(fullfile(output_dir, 'caffe.INFO.test.txt'), 'Delimiter', ',');
                     val_acc = T.acc;
                     [~, epoch_idx] = max(val_acc);
  
-                    % find correspondent model
-                    epoch = num2str(T.iter(epoch_idx));
-                    modelname = [solver_params.snapshot_prefix '_iter_' epoch '.caffemodel'];
-                    solverstatename = [solver_params.snapshot_prefix '_iter_' epoch '.solverstate'];
+                    if epoch_idx == 1
+                        warning('Warning! Your loss diverged');
+                    else
+                        % find correspondent model
+                        epoch = num2str(T.iter(epoch_idx));
+                        modelname = [solver_params.snapshot_prefix '_iter_' epoch '.caffemodel'];
+                        solverstatename = [solver_params.snapshot_prefix '_iter_' epoch '.solverstate'];
 
-                    % rename it
-                    movefile(modelname,'best_model.caffemodel');
-                    movefile(solverstatename,'best_model.solverstate');
+                        % rename it
+                        movefile(modelname,'best_model.caffemodel');
+                        movefile(solverstatename,'best_model.solverstate');
+                    end
                     
                     % clear others
                     delete('snap_*.caffemodel');
@@ -208,6 +226,8 @@ for icat=1:length(cat_idx_all)
                     % delete train/val lmdbs (but leave the mean)
                     rmdir(dbpath{tr_set}, 's');
                     rmdir(dbpath{val_set}, 's');
+                    
+                    cd(curr_dir);
                         
                 end
             end

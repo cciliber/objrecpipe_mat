@@ -1,4 +1,4 @@
-function extract_feat_and_pred_cat(DATA_DIR, dset, question_dir, dset_name, mapping, setlist, trainval_prefixes, trainval_sets, eval_set, caffestuff, extract_features)
+function extract_feat_and_pred_cat(DATA_DIR, dset, question_dir, model_dirname, dset_name, mapping, setlist, trainval_prefixes, trainval_sets, eval_set, caffestuff, extract_features)
 
 cat_idx_all = setlist.cat_idx_all;
 obj_lists_all = setlist.obj_lists_all;
@@ -61,10 +61,11 @@ NCROPS = NCROPS_scale*NSCALES;
 
 max_bsize = round(500/NCROPS);
 
+caffe_model_name = caffestuff.net_name;
+
 if isempty(mapping)
     
     %% Setup caffe model
-    caffe_model_name = caffestuff.net_name;
     caffestuff = setup_caffemodel(caffestuff.caffe_dir, caffestuff, mapping);
     net = caffe.Net(caffestuff.net_model, caffestuff.net_weights, 'test');
     % reshape according to batch size
@@ -76,11 +77,13 @@ if isempty(mapping)
         net.reshape() % optional: the net reshapes automatically before a call to forward()
     end   
     % features to extract
-    if any(~ismember(caffestuff.feat_names, net.blob_names))
-        error('Blob not present!');
+    if extract_features 
+        if any(~ismember(caffestuff.feat_names, net.blob_names))
+            error('Blob not present!');
+        end
+        feat_names = caffestuff.feat_names;
+        nFeat = length(feat_names);
     end
-    feat_names = caffestuff.feat_names;
-    nFeat = length(feat_names);
 
 end
 
@@ -124,30 +127,8 @@ for icat=1:length(cat_idx_all)
                         end
                         trainval_dir = cell2mat(strcat(trainval_prefixes(:), set_names(:), '_')');
                         trainval_dir = trainval_dir(1:end-1);
-                        
-                        %% Setup caffe model
-                        caffe_model_name = caffestuff.net_name;  
-                        caffestuff = setup_caffemodel(trainval_dir, caffestuff, mapping);
-                        net = caffe.Net(caffestuff.net_model, caffestuff.net_weights, 'test');
-                        % reshape according to batch size
-                        inputshape = net.blobs('data').shape();
-                        CROP_SIZE = inputshape(1);
-                        bsize_net = inputshape(4);
-                        if max_bsize*NCROPS ~= bsize_net
-                            net.blobs('data').reshape([CROP_SIZE CROP_SIZE 3 max_bsize*NCROPS])
-                            net.reshape() % optional: the net reshapes automatically before a call to forward()
-                        end   
-                        % features to extract
-                        if any(~ismember(blob_names, caffestuff.feat_names))
-                            error('Blob not present!');
-                        end
-                        feat_names = caffestuff.feat_names;
-                        nFeat = length(feat_names);
-                        
-                    else
-                        
+                    else 
                         trainval_dir = '';
-                        
                     end
                     
                     %% Assign IO directories
@@ -158,7 +139,7 @@ for icat=1:length(cat_idx_all)
                     input_dir_regtxt = fullfile(input_dir_regtxt_root, dir_regtxt_relative);
                     check_input_dir(input_dir_regtxt);
                     
-                    output_dir_y = fullfile(exp_dir, caffe_model_name, dir_regtxt_relative, trainval_dir, mapping);
+                    output_dir_y = fullfile(exp_dir, caffe_model_name, dir_regtxt_relative, trainval_dir, mapping, model_dirname);
                     check_output_dir(output_dir_y);
 
                     if isempty(mapping)
@@ -167,6 +148,31 @@ for icat=1:length(cat_idx_all)
                         output_dir_fc = fullfile(output_dir_y, 'scores');
                     end
                     check_output_dir(output_dir_fc);
+                    
+                    if ~isempty(mapping)
+                        
+                        %% Setup caffe model
+                        caffestuff = setup_caffemodel(fullfile(exp_dir, caffe_model_name, dir_regtxt_relative, trainval_dir), caffestuff, mapping, model_dirname);
+                        net = caffe.Net(caffestuff.net_model, caffestuff.net_weights, 'test');
+                        % reshape according to batch size
+                        inputshape = net.blobs('data').shape();
+                        CROP_SIZE = inputshape(1);
+                        bsize_net = inputshape(4);
+                        if max_bsize*NCROPS ~= bsize_net
+                            net.blobs('data').reshape([CROP_SIZE CROP_SIZE 3 max_bsize*NCROPS])
+                            net.reshape() % optional: the net reshapes automatically before a call to forward()
+                        end
+                        % features to extract
+                        if extract_features 
+                            if any(~ismember(caffestuff.feat_names, net.blob_names))
+                                error('Blob not present!');
+                            end
+                            feat_names = caffestuff.feat_names;
+                            nFeat = length(feat_names);
+                        end
+                        
+                    end
+                    
                     
                     %% Eventually set scores to be selected
                     if isempty(mapping)
@@ -231,13 +237,7 @@ for icat=1:length(cat_idx_all)
                         input_data = zeros(CROP_SIZE,CROP_SIZE,3,bsize_curr*NCROPS, 'single');
                         for imidx=1:bsize_curr
                             im = imread(fullfile(dset_dir, [REG{bstart+imidx-1}(1:(end-4)) '.jpg']));
-                            
-                            if isempty(mapping)  
-                                input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image(im, prep, caffestuff.mean_data, CROP_SIZE);
-                            else
-                                error('Specify how to init model for tuned models...');
-                            end
-                            
+                            input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image(im, prep, caffestuff.mean_data, CROP_SIZE); 
                         end
                         
                         % extract scores in batches
@@ -310,26 +310,26 @@ for icat=1:length(cat_idx_all)
                     if isempty(mapping)
                         [acc, acc_xclass, C] = trace_confusion(Yimnet+1, Ypred_avg+1, score_length);
                     else
-                        [acc, acc_xclass, C] = trace_confusion(Y+1, Ypred_avg+1, score_length);
+                        [acc, acc_xclass, C] = trace_confusion(Y+1, Ypred_avg+1, length(cat_idx));
                     end   
-                    %save(fullfile(output_dir_y, ['Yavg_' set_name '.mat'] ), 'Ypred_avg', 'acc', 'acc_xclass', 'C', '-v7.3');
+                    save(fullfile(output_dir_y, ['Yavg_' set_name '.mat'] ), 'Ypred_avg', 'acc', 'acc_xclass', 'C', '-v7.3');
                     
                     if isempty(mapping)
-                        [acc, acc_xclass, C] = trace_confusion(Y+1, Ypred_avg_sel+1, length(cat_idx));
-                        %save(fullfile(output_dir_y, ['Yavg_sel_' set_name '.mat'] ), 'Ypred_avg_sel', 'acc', 'acc_xclass', 'C', '-v7.3');  
+                        [acc, acc_xclass, C] = trace_confusion(Y+1, Ypred_avg_sel+1, score_length);
+                        save(fullfile(output_dir_y, ['Yavg_sel_' set_name '.mat'] ), 'Ypred_avg_sel', 'acc', 'acc_xclass', 'C', '-v7.3');  
                     end
                     
                     if NCROPS>1
                         if isempty(mapping)
                             [acc, acc_xclass, C] = trace_confusion(Yimnet+1, Ypred_central+1, score_length);
                         else
-                            [acc, acc_xclass, C] = trace_confusion(Y+1, Ypred_central+1, score_length);
+                            [acc, acc_xclass, C] = trace_confusion(Y+1, Ypred_central+1, length(cat_idx));
                         end
-                        %save(fullfile(output_dir_y, ['Ycentral_' set_name '.mat'] ), 'Ypred_central', 'acc', 'acc_xclass', 'C', '-v7.3');
+                        save(fullfile(output_dir_y, ['Ycentral_' set_name '.mat'] ), 'Ypred_central', 'acc', 'acc_xclass', 'C', '-v7.3');
                         
                         if isempty(mapping)
-                            [acc, acc_xclass, C] = trace_confusion(Y+1, Ypred_central_sel+1, length(cat_idx));
-                            %save(fullfile(output_dir_y, ['Ycentral_sel_' set_name '.mat'] ), 'Ypred_central_sel', 'acc', 'acc_xclass', 'C', '-v7.3');
+                            [acc, acc_xclass, C] = trace_confusion(Y+1, Ypred_central_sel+1, score_length);
+                            save(fullfile(output_dir_y, ['Ycentral_sel_' set_name '.mat'] ), 'Ypred_central_sel', 'acc', 'acc_xclass', 'C', '-v7.3');
                         end
                     end                       
 

@@ -37,3 +37,7 @@
 build
 *.cproject
 *.project
+
+
+# local 
+z_gitignore*

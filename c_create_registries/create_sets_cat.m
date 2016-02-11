@@ -156,7 +156,7 @@ for icat=1:length(cat_idx_all)
                             end
                         end
                         
-                        disp([set_name ': ' cat_names(cc)]);
+                        fprintf('%s: %s\n',set_name,cat_names{cc});
                         
                         fclose(fid_Y);
                         if create_imnetlabels
