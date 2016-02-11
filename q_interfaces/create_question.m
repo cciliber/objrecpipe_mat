@@ -1,0 +1,42 @@
+function question = create_question(question_root_path,question_name,question_config_script)
+
+    % This function produces all necessary information to ran a network on a
+    % specific set of datasets.
+
+    
+    % setup the machine parameters as usual
+    setup_data = setup_machine();
+    
+    
+    
+    % call the config file 
+    run(question_config_script);
+    
+    
+
+    %put everything in the question
+    question = struct;
+     
+    question.question_dir = question_name;
+    question.question_struct_path = question_struct_path;
+    
+    question.setlist = setlist;
+
+    wrapper_create_sets_cat(question,setup_data);
+
+    save(fullfile(question_struct_path,question_name),'question');
+
+end
+
+
+function wrapper_create_sets_cat(question,setup_data)
+
+    % create the question!
+    new_create_sets_cat(setup_data.DATA_DIR,...
+        setup_data.dset, ...
+        question.question_dir, ...
+        setlist);
+
+
+end
+
