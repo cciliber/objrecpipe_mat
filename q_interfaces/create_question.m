@@ -25,7 +25,7 @@ function question = create_question(question_root_path,question_name,question_co
     
     question.setlist = setlist;
 
-    wrapper_create_sets_cat(question,setup_data);
+    wrapper_create_sets_cat(setup_data,question);
     
 
     save(question.question_struct_path,'question');

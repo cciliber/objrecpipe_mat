@@ -9,8 +9,14 @@ day_mappings_all = question.setlist.day_mappings_all;
 day_lists_all = question.setlist.day_lists_all;
 camera_lists_all = question.setlist.camera_lists_all;
 
-extract_features = experiment.extract_features;
-dset_dir = experiment.dset_dir;
+[~,dset_name] = fileparts(experiment.dset_dir);
+
+if isfield(experiment,'extract_features')
+    extract_features = experiment.extract_features;
+    feat_names = experiment.feat_names;
+else
+    extract_features = 0;
+end
 
 trainval_prefixes = {'train_','val_'};
 trainval_sets = [1,2];
@@ -28,8 +34,8 @@ input_dir_regtxt_root = fullfile(setup_data.DATA_DIR, 'iCubWorldUltimate_registr
 check_input_dir(input_dir_regtxt_root);
 
 % output root
-dset_dir = fullfile(setup_data.DATA_DIR, dset_dir);
-exp_dir = fullfile(setup_data.DATA_DIR, [dset_dir '_experiments'], 'categorization');
+dset_dir = fullfile(setup_data.DATA_DIR, dset_name);
+exp_dir = fullfile(setup_data.DATA_DIR, [dset_name '_experiments'], 'categorization');
 check_output_dir(exp_dir);
 
 %% Caffe init
@@ -79,7 +85,7 @@ caffe_model_name = network.caffestuff.net_name;
 
 if isempty(network.mapping)
     %% Setup caffe model
-    network.caffestuff = setup_caffemodel(network.caffestuff.caffe_dir, network.caffestuff, network.mapping);
+    network.caffestuff = network.setup_caffemodel(network.caffestuff.caffe_dir, network.caffestuff, network.mapping);
     net = caffe.Net(network.caffestuff.net_model, network.caffestuff.net_weights, 'test');
     % reshape according to batch size
     inputshape = net.blobs('data').shape();
@@ -165,7 +171,7 @@ for icat=1:length(cat_idx_all)
                     if ~isempty(network.mapping)
                         
                         %% Setup caffe model
-                        network.caffestuff = setup_caffemodel(fullfile(exp_dir, caffe_model_name, dir_regtxt_relative, trainval_dir), network.caffestuff, network.mapping, network.network_dir);
+                        network.caffestuff = network.setup_caffemodel(fullfile(exp_dir, caffe_model_name, dir_regtxt_relative, trainval_dir), network.caffestuff, network.mapping, network.network_dir);
                         net = caffe.Net(network.caffestuff.net_model, network.caffestuff.net_weights, 'test');
                         % reshape according to batch size
                         inputshape = net.blobs('data').shape();
@@ -177,10 +183,9 @@ for icat=1:length(cat_idx_all)
                         end
                         % features to extract
                         if extract_features 
-                            if any(~ismember(network.caffestuff.feat_names, net.blob_names))
+                            if any(~ismember(feat_names, net.blob_names))
                                 error('Blob not present!');
                             end
-                            feat_names = network.caffestuff.feat_names;
                             nFeat = length(feat_names);
                         end
                         

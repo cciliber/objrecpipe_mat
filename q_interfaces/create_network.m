@@ -53,9 +53,9 @@ function network = create_network(network_root_path,network_name,network_config_
             deploy_params = create_struct_from_txt(caffestuff.deploy_model_struct_types, caffestuff.deploy_model_struct_values);              
 
             % solver definition
-            caffestuff.solver_template = fullfile(template_prototxts_path, caffestuff.net_name, 'solver_template.prototxt');
-            caffestuff.solver_struct_types = fullfile(template_prototxts_path, caffestuff.net_name, 'solver_struct_types.txt');
-            caffestuff.solver_struct_values = fullfile(template_prototxts_path, caffestuff.net_name, 'solver_struct_values.txt');
+            caffestuff.solver_template = fullfile(setup_data.template_prototxts_path, caffestuff.net_name, 'solver_template.prototxt');
+            caffestuff.solver_struct_types = fullfile(setup_data.template_prototxts_path, caffestuff.net_name, 'solver_struct_types.txt');
+            caffestuff.solver_struct_values = fullfile(setup_data.template_prototxts_path, caffestuff.net_name, 'solver_struct_values.txt');
 
             % solver initialization
             solver_params = create_struct_from_txt(caffestuff.solver_struct_types, caffestuff.solver_struct_values);         
@@ -70,7 +70,7 @@ function network = create_network(network_root_path,network_name,network_config_
 
 
 
-            if exists(fc7_name)
+            if exist('fc7_name')
 
                 trainval_params.fc7_lr_mult_W = fc7_final_W/base_lr;
                 trainval_params.fc7_lr_mult_b = fc7_final_b/base_lr;
@@ -85,7 +85,7 @@ function network = create_network(network_root_path,network_name,network_config_
 
             end
 
-            if exists(fc6_name)
+            if exist('fc6_name')
 
                 trainval_params.fc6_lr_mult_W = fc6_final_W/base_lr;
                 trainval_params.fc6_lr_mult_b = fc6_final_b/base_lr;
@@ -100,11 +100,11 @@ function network = create_network(network_root_path,network_name,network_config_
 
             end
 
-            if exists(drop7_dropout_ratio)
+            if exist('drop7_dropout_ratio')
                 trainval_params.drop7_dropout_ratio = drop7_dropout_ratio;
             end
 
-            if exists(drop6_dropout_ratio)   
+            if exist('drop6_dropout_ratio')   
                 trainval_params.drop6_dropout_ratio = drop6_dropout_ratio;
             end
 
@@ -145,11 +145,11 @@ function network = create_network(network_root_path,network_name,network_config_
         
 
         % update the caffestuff
-        network.setup_caffemodel = setup_caffemodel;
+        network.setup_caffemodel = @internal_setup_caffemodel;
 
     else
         % setup only once the caffestuff
-        caffestuff = setup_caffemodel(setup_data.caffe_dir);
+        caffestuff = internal_setup_caffemodel(setup_data.caffe_dir);
         
         % just do nothing
         network.setup_caffemodel = @(net_dir, caffestuff) caffestuff;
@@ -172,7 +172,7 @@ end
 
 
 
-function caffestuff = setup_caffemodel(net_dir, caffestuff, mapping, model_dirname)
+function caffestuff = internal_setup_caffemodel(net_dir, caffestuff, mapping, model_dirname)
 
     if isempty(mapping)
 

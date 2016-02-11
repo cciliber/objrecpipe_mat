@@ -51,8 +51,11 @@ caffestuff.preprocessing.GRID.mirror = true;
 
 
 model_dirname = 'model_conservative_bl_-05_fc8-N_01_fc7-N_01_fc6-N_01';
+
+model_dirname = 'model_aggressive_bl_-03_fc8-N_01_fc7_00_fc6_00';
+
 extract_features = true;
-caffestuff.feat_names = {'pool5', 'fc7-N'};
+caffestuff.feat_names = {'pool5', 'fc7'};
 %caffestuff.feat_names = {'conv3', 'conv4', 'pool5', 'fc6', 'fc7'};
 
 % caffestuff.net_name = 'googlenet_caffe';

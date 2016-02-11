@@ -1,4 +1,4 @@
-function network = finetune_network(network,question,finetune_config)
+function network = finetune_network(question,network,finetune_config)
 
     setup_data = setup_machine();
     

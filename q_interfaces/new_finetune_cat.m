@@ -97,7 +97,7 @@ for icat=1:length(cat_idx_all)
                             warning(sprintf('Going to remove and recreate the db: %s', dbpath{iset}));
                             rmdir(dbpath{iset}, 's');
                         end
-                        command = sprintf('%s --resize_width=%d --resize_height=%d --shuffle %s %s %s', network.create_lmdb_bin_path, MEAN_W, MEAN_H, [dset_dir '/'], filelist, dbpath{iset});
+                        command = sprintf('%s --resize_width=%d --resize_height=%d --shuffle %s %s %s', setup_data.create_lmdb_bin_path, MEAN_W, MEAN_H, [dset_dir '/'], filelist, dbpath{iset});
                         [status, cmdout] = system(command);
                         if status~=0
                            error(cmdout);
@@ -113,7 +113,7 @@ for icat=1:length(cat_idx_all)
                     mean_name = [trainval_prefixes{tr_set} 'mean.binaryproto'];                   
                     mean_path = fullfile(output_dir, mean_name);
                         
-                    command = sprintf('%s %s %s', network.compute_mean_bin_path, dbpath{tr_set}, mean_path);
+                    command = sprintf('%s %s %s', setup_data.compute_mean_bin_path, dbpath{tr_set}, mean_path);
                     [status, cmdout] = system(command);
                     if status~=0
                       error(cmdout);
@@ -194,7 +194,7 @@ for icat=1:length(cat_idx_all)
                     else 
                         % or calling the command line interface
                         command = sprintf('%s train -solver %s -weights %s -gpu %d --log_dir=%s', ...
-                            network.caffe_bin_path, network.caffestuff.solver, network.caffestuff.net_weights, gpu_id, output_dir);
+                            setup_data.caffe_bin_path, network.caffestuff.solver, network.caffestuff.net_weights, gpu_id, output_dir);
                         [status, cmdout] = system(command);
                         if status~=0
                             error(cmdout);
@@ -204,7 +204,7 @@ for icat=1:length(cat_idx_all)
                     %% Choose epoch
                     
                     % parse the logs
-                    command = sprintf('%s %s', network.parse_log_path, fullfile(output_dir, 'caffe.INFO'));
+                    command = sprintf('%s %s', setup_data.parse_log_path, fullfile(output_dir, 'caffe.INFO'));
                     [status, cmdout] = system(command);
                     if status~=0
                        error(cmdout);

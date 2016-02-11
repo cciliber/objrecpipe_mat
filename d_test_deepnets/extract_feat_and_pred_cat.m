@@ -29,12 +29,12 @@ prep = caffestuff.preprocessing;
 NCROPS_grid = (prep.GRID.nodes*prep.GRID.nodes+mod(prep.GRID.nodes+1,2)+prep.GRID.resize)*(prep.GRID.mirror+1);
 
 if ~isempty(prep.OUTER_GRID)
-    NCROPS_scale = NCROPS_grid*prep.OUTER_GRID; 
+    NCROPS_scale = NCROPS_grid*prep.OUTER_GRID;
 else
     NCROPS_scale = NCROPS_grid;
 end
 
-if ~isfield(prep, 'SCALING') 
+if ~isfield(prep, 'SCALING')
     centralscale = 1;
     NSCALES = 1;
 elseif size(prep.SCALING.scales,1)==1
@@ -57,35 +57,11 @@ else
     central_score_idx = central_score_idx + prep.GRID.nodes*prep.GRID.nodes+1;
 end
 
-NCROPS = NCROPS_scale*NSCALES; 
+NCROPS = NCROPS_scale*NSCALES;
 
 max_bsize = round(500/NCROPS);
 
 caffe_model_name = caffestuff.net_name;
-
-if isempty(mapping)
-    
-    %% Setup caffe model
-    caffestuff = setup_caffemodel(caffestuff.caffe_dir, caffestuff, mapping);
-    net = caffe.Net(caffestuff.net_model, caffestuff.net_weights, 'test');
-    % reshape according to batch size
-    inputshape = net.blobs('data').shape();
-    CROP_SIZE = inputshape(1);
-    bsize_net = inputshape(4);
-    if max_bsize*NCROPS ~= bsize_net
-        net.blobs('data').reshape([CROP_SIZE CROP_SIZE 3 max_bsize*NCROPS])
-        net.reshape() % optional: the net reshapes automatically before a call to forward()
-    end   
-    % features to extract
-    if extract_features 
-        if any(~ismember(caffestuff.feat_names, net.blob_names))
-            error('Blob not present!');
-        end
-        feat_names = caffestuff.feat_names;
-        nFeat = length(feat_names);
-    end
-
-end
 
 %% For each experiment, go!
 
@@ -121,13 +97,13 @@ for icat=1:length(cat_idx_all)
                         set_names = cell(length(trainval_sets),1);
                         for iset=trainval_sets
                             set_names{iset} = [strrep(strrep(num2str(obj_lists_all{iobj}{iset}), '   ', '-'), '  ', '-') ...
-                            '_tr_' strrep(strrep(num2str(transf_lists_all{itransf}{iset}), '   ', '-'), '  ', '-') ...
-                            '_day_' strrep(strrep(num2str(day_mappings_all{iday}{iset}), '   ', '-'), '  ', '-') ...
-                            '_cam_' strrep(strrep(num2str(camera_lists_all{icam}{iset}), '   ', '-'), '  ', '-')];
+                                '_tr_' strrep(strrep(num2str(transf_lists_all{itransf}{iset}), '   ', '-'), '  ', '-') ...
+                                '_day_' strrep(strrep(num2str(day_mappings_all{iday}{iset}), '   ', '-'), '  ', '-') ...
+                                '_cam_' strrep(strrep(num2str(camera_lists_all{icam}{iset}), '   ', '-'), '  ', '-')];
                         end
                         trainval_dir = cell2mat(strcat(trainval_prefixes(:), set_names(:), '_')');
                         trainval_dir = trainval_dir(1:end-1);
-                    else 
+                    else
                         trainval_dir = '';
                     end
                     
@@ -141,39 +117,41 @@ for icat=1:length(cat_idx_all)
                     
                     output_dir_y = fullfile(exp_dir, caffe_model_name, dir_regtxt_relative, trainval_dir, mapping, model_dirname);
                     check_output_dir(output_dir_y);
-
+                    
                     if isempty(mapping)
-                        output_dir_fc = fullfile(exp_dir, caffe_model_name, 'scores');                  
+                        output_dir_fc = fullfile(exp_dir, caffe_model_name, 'scores');
                     else
                         output_dir_fc = fullfile(output_dir_y, 'scores');
                     end
                     check_output_dir(output_dir_fc);
                     
-                    if ~isempty(mapping)
-                        
-                        %% Setup caffe model
+                    %% Setup caffe model
+                     
+                    if ~isempty(mapping)                
                         caffestuff = setup_caffemodel(fullfile(exp_dir, caffe_model_name, dir_regtxt_relative, trainval_dir), caffestuff, mapping, model_dirname);
-                        net = caffe.Net(caffestuff.net_model, caffestuff.net_weights, 'test');
-                        % reshape according to batch size
-                        inputshape = net.blobs('data').shape();
-                        CROP_SIZE = inputshape(1);
-                        bsize_net = inputshape(4);
-                        if max_bsize*NCROPS ~= bsize_net
-                            net.blobs('data').reshape([CROP_SIZE CROP_SIZE 3 max_bsize*NCROPS])
-                            net.reshape() % optional: the net reshapes automatically before a call to forward()
-                        end
-                        % features to extract
-                        if extract_features 
-                            if any(~ismember(caffestuff.feat_names, net.blob_names))
-                                error('Blob not present!');
-                            end
-                            feat_names = caffestuff.feat_names;
-                            nFeat = length(feat_names);
-                        end
-                        
+                    else
+                        caffestuff = setup_caffemodel(caffestuff.caffe_dir, caffestuff, mapping);
+                    end
+                    net = caffe.Net(caffestuff.net_model, caffestuff.net_weights, 'test');
+                    
+                    %% Reshape according to batch size
+                    inputshape = net.blobs('data').shape();
+                    CROP_SIZE = inputshape(1);
+                    bsize_net = inputshape(4);
+                    if max_bsize*NCROPS ~= bsize_net
+                        net.blobs('data').reshape([CROP_SIZE CROP_SIZE 3 max_bsize*NCROPS])
+                        net.reshape() % optional: the net reshapes automatically before a call to forward()
                     end
                     
-                    
+                    %% Features to extract
+                    if extract_features
+                        if any(~ismember(caffestuff.feat_names, net.blob_names))
+                            error('Blob not present!');
+                        end
+                        feat_names = caffestuff.feat_names;
+                        nFeat = length(feat_names);
+                    end
+
                     %% Eventually set scores to be selected
                     if isempty(mapping)
                         sel_idxs = cell2mat(values(dset.Cat_ImnetLabels));
@@ -188,20 +166,20 @@ for icat=1:length(cat_idx_all)
                     
                     %% Load the registry and Y (true labels)
                     fid = fopen(fullfile(input_dir_regtxt, [set_name '_Y.txt']));
-                    input_registry = textscan(fid, '%s %d'); 
+                    input_registry = textscan(fid, '%s %d');
                     fclose(fid);
                     Y = input_registry{2};
-                    REG = input_registry{1};  
+                    REG = input_registry{1};
                     if isempty(mapping)
                         fid = fopen(fullfile(input_dir_regtxt, [set_name '_Yimnet.txt']));
-                        input_registry = textscan(fid, '%s %d'); 
+                        input_registry = textscan(fid, '%s %d');
                         fclose(fid);
                         Yimnet = input_registry{2};
                     end
                     clear input_registry;
                     
                     %% Extract scores (+ features) and compute predictions
-              
+                    
                     % get number of samples
                     Nsamples = length(Y);
                     
@@ -216,7 +194,7 @@ for icat=1:length(cat_idx_all)
                             Ypred_central_sel = zeros(Nsamples,1);
                         end
                     end
-                      
+                    
                     bsize = min(max_bsize, Nsamples);
                     Nbatches = ceil(Nsamples/bsize);
                     
@@ -237,7 +215,7 @@ for icat=1:length(cat_idx_all)
                         input_data = zeros(CROP_SIZE,CROP_SIZE,3,bsize_curr*NCROPS, 'single');
                         for imidx=1:bsize_curr
                             im = imread(fullfile(dset_dir, [REG{bstart+imidx-1}(1:(end-4)) '.jpg']));
-                            input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image(im, prep, caffestuff.mean_data, CROP_SIZE); 
+                            input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image(im, prep, caffestuff.mean_data, CROP_SIZE);
                         end
                         
                         % extract scores in batches
@@ -257,7 +235,7 @@ for icat=1:length(cat_idx_all)
                         
                         % reshape, dividing features per image
                         if extract_features
-                            for ff=1:nFeat 
+                            for ff=1:nFeat
                                 feat{ff} = reshape(feat{ff}, [], NCROPS, bsize_curr);
                             end
                         end
@@ -278,7 +256,7 @@ for icat=1:length(cat_idx_all)
                         
                         if NCROPS>1
                             % take central score over crops
-                            central_scores = squeeze(scores(:,central_score_idx,:));  
+                            central_scores = squeeze(scores(:,central_score_idx,:));
                             [~, maxlabel_central] = max(central_scores);
                             maxlabel_central = maxlabel_central - 1;
                             Ypred_central(bstart:bend) = maxlabel_central;
@@ -290,7 +268,7 @@ for icat=1:length(cat_idx_all)
                                 Ypred_central_sel(bstart:bend) = maxlabel_central_sel;
                             end
                         end
-
+                        
                         % save extracted features
                         if extract_features
                             for imidx=1:bsize_curr
@@ -301,22 +279,22 @@ for icat=1:length(cat_idx_all)
                                     save(fullfile(output_dir_fc, feat_names{ff}, [REG{bstart+imidx-1}(1:(end-4)) '.mat']), 'fc');
                                 end
                             end
-                        end             
-
+                        end
+                        
                         fprintf('batch %d out of %d \n', bidx, Nbatches);
                     end
-
-                    % compute accuracy and save everything             
+                    
+                    % compute accuracy and save everything
                     if isempty(mapping)
                         [acc, acc_xclass, C] = trace_confusion(Yimnet+1, Ypred_avg+1, score_length);
                     else
                         [acc, acc_xclass, C] = trace_confusion(Y+1, Ypred_avg+1, length(cat_idx));
-                    end   
+                    end
                     save(fullfile(output_dir_y, ['Yavg_' set_name '.mat'] ), 'Ypred_avg', 'acc', 'acc_xclass', 'C', '-v7.3');
                     
                     if isempty(mapping)
                         [acc, acc_xclass, C] = trace_confusion(Y+1, Ypred_avg_sel+1, score_length);
-                        save(fullfile(output_dir_y, ['Yavg_sel_' set_name '.mat'] ), 'Ypred_avg_sel', 'acc', 'acc_xclass', 'C', '-v7.3');  
+                        save(fullfile(output_dir_y, ['Yavg_sel_' set_name '.mat'] ), 'Ypred_avg_sel', 'acc', 'acc_xclass', 'C', '-v7.3');
                     end
                     
                     if NCROPS>1
@@ -331,12 +309,12 @@ for icat=1:length(cat_idx_all)
                             [acc, acc_xclass, C] = trace_confusion(Y+1, Ypred_central_sel+1, score_length);
                             save(fullfile(output_dir_y, ['Ycentral_sel_' set_name '.mat'] ), 'Ypred_central_sel', 'acc', 'acc_xclass', 'C', '-v7.3');
                         end
-                    end                       
-
+                    end
+                    
+                    caffe.reset_all();
+                    
                 end
             end
         end
     end
 end
-
-caffe.reset_all();
