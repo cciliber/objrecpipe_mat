@@ -1,35 +1,33 @@
-%% Setup
+function results = analyze_experiment(results_root_path, results_name, experiment, results_config_script)
 
-%FEATURES_DIR = '/Users/giulia/REPOS/objrecpipe_mat';
-%FEATURES_DIR = '/home/giulia/REPOS/objrecpipe_mat';
-FEATURES_DIR = '/data/giulia/REPOS/objrecpipe_mat';
-addpath(genpath(FEATURES_DIR));
 
-%DATA_DIR = '/media/giulia/MyPassport';
-%DATA_DIR = '/Volumes/MyPassport';
-DATA_DIR = '/data/giulia/ICUBWORLD_ULTIMATE';
+setup_data = setup_machine();
 
-%% Dataset info
+if nargin<4
+    default_results_config_script;
+else
+    run(results_config_script);
+end
+    
+results = struct;
 
-dset_info = fullfile(DATA_DIR, 'iCubWorldUltimate_registries/info/iCubWorldUltimate.txt');
-dset_name = 'iCubWorldUltimate';
+results.results_struct_path = fullfile(results_root_path, results_name);
 
-opts = ICUBWORLDinit(dset_info);
 
-cat_names = keys(opts.Cat)';
-%obj_names = keys(opts.Obj)';
-transf_names = keys(opts.Transfs)';
-day_names = keys(opts.Days)';
-camera_names = keys(opts.Cameras)';
+% pointer to the image set used for the experiment
+experiment.dset_dir = dset_dir;
 
-Ncat = opts.Cat.Count;
-Nobj = opts.Obj.Count;
-NobjPerCat = opts.ObjPerCat;
-Ntransfs = opts.Transfs.Count;
-Ndays = length(unique(cell2mat(values(opts.Days))));
-Ncameras = opts.Cameras.Count;
+% whether we want to extract features
+experiment.extract_features = extract_features;
 
-%% Set up the experiments
+% which features we want to extract
+experiment.feat_names = feat_names;
+
+experiment = new_extract_feat_and_pred_cat(setup_data, question, network, experiment);
+
+    
+
+
 
 % Default sets that are searched
 

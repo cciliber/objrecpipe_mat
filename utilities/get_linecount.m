@@ -2,7 +2,7 @@ function linecount = get_linecount(f)
 
 [status, cmdout] = system(sprintf ('wc -l %s', f));
 
-if (status~=1)
+if status==0
     scancell = textscan(cmdout,'%u %s');
     linecount = scancell{1}; 
 else 

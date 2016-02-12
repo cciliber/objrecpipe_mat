@@ -216,7 +216,7 @@ for icat=1:length(cat_idx_all)
                     [~, epoch_idx] = max(val_acc);
  
                     if epoch_idx == 1
-                        warning('Warning! Your loss diverged');
+                        warning('Your loss diverged.');
                     else
                         % find correspondent model
                         epoch = num2str(T.iter(epoch_idx));

@@ -21,15 +21,13 @@ function network = create_network(network_root_path,network_name,network_config_
 
     %put everything in the question
     network = struct;
-     
+    
+    network.network_dir = network_name;
+    
     network.network_struct_path = fullfile(network_root_path,network_name);
 
-    caffestuff.net_weights = caffestuff.original_net_weights;
-
-
-
+    
     network.mapping = mapping;
-
     
     if ~isempty(network.mapping)
        
@@ -67,10 +65,13 @@ function network = create_network(network_root_path,network_name,network_config_
             trainval_params.fc8_top = fc8_name;
             trainval_params.accuracy_bottom = fc8_name;
             trainval_params.loss_bottom = fc8_name;
+            
+     
+            
 
 
 
-            if exist('fc7_name')
+            if exist('fc7_name', 'var')
 
                 trainval_params.fc7_lr_mult_W = fc7_final_W/base_lr;
                 trainval_params.fc7_lr_mult_b = fc7_final_b/base_lr;
@@ -83,9 +84,10 @@ function network = create_network(network_root_path,network_name,network_config_
                 trainval_params.drop7_top = fc7_name;
                 trainval_params.fc8_bottom = fc7_name;
 
+                           
             end
 
-            if exist('fc6_name')
+            if exist('fc6_name', 'var')
 
                 trainval_params.fc6_lr_mult_W = fc6_final_W/base_lr;
                 trainval_params.fc6_lr_mult_b = fc6_final_b/base_lr;
@@ -98,19 +100,20 @@ function network = create_network(network_root_path,network_name,network_config_
                 trainval_params.drop6_top = fc6_name;
                 trainval_params.fc7_bottom = fc6_name;
 
+
             end
 
-            if exist('drop7_dropout_ratio')
+            if exist('drop7_dropout_ratio', 'var')
                 trainval_params.drop7_dropout_ratio = drop7_dropout_ratio;
             end
 
-            if exist('drop6_dropout_ratio')   
+            if exist('drop6_dropout_ratio', 'var')   
                 trainval_params.drop6_dropout_ratio = drop6_dropout_ratio;
             end
 
 
 
-            % copy net_params       
+            % assign trainval_params to deploy_params   
             fnames = fieldnames(deploy_params);
             for ii=1:length(fnames)
                 if isfield(trainval_params, fnames{ii})
@@ -129,32 +132,27 @@ function network = create_network(network_root_path,network_name,network_config_
 
 
 
-
         network.trainval_params     = trainval_params;
         network.deploy_params       = deploy_params;
         network.solver_params       = solver_params;
 
 
 
-
-        network.network_dir = sprintf('model_%s_bl_%f_%s_%d_%s_%d_%s_%d', network_name, ...
-            base_lr, ...
-            fc8_name, fc8_final_W/base_lr, ...
-            fc7_name, fc7_final_W/base_lr, ...
-            fc6_name,fc6_final_W/base_lr);
-        
-
         % update the caffestuff
         network.setup_caffemodel = @internal_setup_caffemodel;
 
+        caffestuff.net_weights = caffestuff.original_net_weights;
+        
     else
         % setup only once the caffestuff
-        caffestuff = internal_setup_caffemodel(setup_data.caffe_dir);
+        caffestuff = internal_setup_caffemodel(setup_data.caffe_dir, caffestuff, mapping);
         
         % just do nothing
-        network.setup_caffemodel = @(net_dir, caffestuff) caffestuff;
+        %network.setup_caffemodel = @(net_dir, caffestuff) caffestuff;
+        
+        network.network_dir = '';
+        
     end
-    
 
     network.caffestuff = caffestuff;
     

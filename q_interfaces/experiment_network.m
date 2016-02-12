@@ -1,17 +1,17 @@
-function experiment = experiment_network(experiment_root_path,experiment_name,question,network,experiment_network_config)
+function experiment = experiment_network(experiment_root_path, experiment_name, question, network, experiment_config_script)
 
     setup_data = setup_machine();
     
     if nargin<4
         default_experiment_network_config;
     else
-        run(experiment_network_config);
+        run(experiment_config_script);
     end
     
     
     experiment = struct;
   
-    experiment.experiment_struct_path = fullfile(experiment_root_path,experiment_name);
+    experiment.experiment_struct_path = fullfile(experiment_root_path, experiment_name);
     
     % pointer to the image set used for the experiment
     experiment.dset_dir = dset_dir;

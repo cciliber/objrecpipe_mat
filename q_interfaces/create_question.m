@@ -1,6 +1,6 @@
 function question = create_question(question_root_path,question_name,question_config_script)
 
-    % This function produces all necessary information to ran a network on a
+    % This function produces all necessary information to run a network on a
     % specific set of datasets.
 
     
