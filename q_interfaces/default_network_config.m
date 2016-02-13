@@ -16,9 +16,8 @@ caffestuff.MEAN_H = 256;
 %%
 mapping = 'tuning';
 
-ne
 
-%% B
+%%
 base_lr = 1e-3;
 fc8_name = 'fc8-N';
 fc7_name = 'fc7';
@@ -33,7 +32,6 @@ fc6_final_b = 2*fc6_final_W;
 drop6_dropout_ratio = 0.5;
 drop7_dropout_ratio = 0.5;
 
-% human_readable_name = 'conservative';
 % base_lr = 1e-5;
 % fc8_name = 'fc8-N';
 % fc7_name = 'fc7-N';

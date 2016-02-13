@@ -22,12 +22,16 @@ function network = create_network(network_root_path,network_name,network_config_
     %put everything in the question
     network = struct;
     
-    network.network_dir = network_name;
+    network.mapping = mapping;
+    
+    if ~isempty(mapping)
+        network.network_dir = network_name;
+    end
     
     network.network_struct_path = fullfile(network_root_path,network_name);
 
     
-    network.mapping = mapping;
+    
     
     if ~isempty(network.mapping)
        

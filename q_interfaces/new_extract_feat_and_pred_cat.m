@@ -136,7 +136,11 @@ for icat=1:length(cat_idx_all)
                     input_dir_regtxt = fullfile(input_dir_regtxt_root, dir_regtxt_relative);
                     check_input_dir(input_dir_regtxt);
                     
-                    output_dir_y = fullfile(exp_dir, caffe_model_name, dir_regtxt_relative, trainval_dir, network.mapping, network.network_dir);
+                    if isfield(network, 'network_dir')
+                        output_dir_y = fullfile(exp_dir, caffe_model_name, dir_regtxt_relative, trainval_dir, network.mapping, network.network_dir);
+                    else
+                        output_dir_y = fullfile(exp_dir, caffe_model_name, dir_regtxt_relative, trainval_dir, network.mapping);
+                    end
                     check_output_dir(output_dir_y);
 
                     if isempty(network.mapping)
@@ -206,7 +210,7 @@ for icat=1:length(cat_idx_all)
                     fclose(fid);
                     Y = input_registry{2};
                     REG = input_registry{1};  
-                    if isempty(network.mapping)
+                    if isempty(network.mapping) && question.setlist.create_imnetlabels
                         fid = fopen(fullfile(input_dir_regtxt, [set_name '_Yimnet.txt']));
                         input_registry = textscan(fid, '%s %d'); 
                         fclose(fid);
@@ -323,30 +327,54 @@ for icat=1:length(cat_idx_all)
                         fprintf('batch %d out of %d \n', bidx, Nbatches);
                     end
 
-                    % compute accuracy and save everything             
-                    if isempty(network.mapping)
-                        [acc, acc_xclass, C] = trace_confusion(Yimnet+1, Ypred_avg+1, score_length);
+                    % compute accuracy and save everything   
+                    saving_acc = true;
+                    if isempty(network.mapping) 
+                        if question.setlist.create_imnetlabels
+                            [acc, acc_xclass, C] = trace_confusion(Yimnet+1, Ypred_avg+1, score_length);
+                        else
+                            warning('mapping is empty but Yimnet not found: skipping accuracy for Ypred_avg...');
+                            saving_acc = false;
+                        end
                     else
                         [acc, acc_xclass, C] = trace_confusion(Y+1, Ypred_avg+1, length(cat_idx));
-                    end   
-                    save(fullfile(output_dir_y, ['Yavg_' set_name '.mat'] ), 'Ypred_avg', 'acc', 'acc_xclass', 'C', '-v7.3');
+                    end  
+                    Ypred = Ypred_avg;
+                    if saving_acc     
+                        save(fullfile(output_dir_y, ['Yavg_' set_name '.mat'] ), 'Ypred', 'acc', 'acc_xclass', 'C', '-v7.3');
+                    else
+                        save(fullfile(output_dir_y, ['Yavg_' set_name '.mat'] ), 'Ypred', '-v7.3');
+                    end
                     
                     if isempty(network.mapping)
                         [acc, acc_xclass, C] = trace_confusion(Y+1, Ypred_avg_sel+1, length(cat_idx));
-                        save(fullfile(output_dir_y, ['Yavg_sel_' set_name '.mat'] ), 'Ypred_avg_sel', 'acc', 'acc_xclass', 'C', '-v7.3');  
+                        Ypred = Ypred_avg_sel;
+                        save(fullfile(output_dir_y, ['Yavg_sel_' set_name '.mat'] ), 'Ypred', 'acc', 'acc_xclass', 'C', '-v7.3');  
                     end
                     
                     if NCROPS>1
+                        saving_acc = true;
                         if isempty(network.mapping)
-                            [acc, acc_xclass, C] = trace_confusion(Yimnet+1, Ypred_central+1, score_length);
+                            if question.setlist.create_imnetlabels
+                                [acc, acc_xclass, C] = trace_confusion(Yimnet+1, Ypred_central+1, score_length);
+                            else
+                                warning('mapping is empty but Yimnet not found: skipping accuracy for Ypred_central...');
+                                saving_acc = false;
+                            end
                         else
                             [acc, acc_xclass, C] = trace_confusion(Y+1, Ypred_central+1, length(cat_idx));
                         end
-                        save(fullfile(output_dir_y, ['Ycentral_' set_name '.mat'] ), 'Ypred_central', 'acc', 'acc_xclass', 'C', '-v7.3');
+                        Ypred = Ypred_central;
+                        if saving_acc
+                            save(fullfile(output_dir_y, ['Ycentral_' set_name '.mat'] ), 'Ypred', 'acc', 'acc_xclass', 'C', '-v7.3');
+                        else
+                            save(fullfile(output_dir_y, ['Ycentral_' set_name '.mat'] ), 'Ypred', '-v7.3');
+                        end
                         
                         if isempty(network.mapping)
                             [acc, acc_xclass, C] = trace_confusion(Y+1, Ypred_central_sel+1, length(cat_idx));
-                            save(fullfile(output_dir_y, ['Ycentral_sel_' set_name '.mat'] ), 'Ypred_central_sel', 'acc', 'acc_xclass', 'C', '-v7.3');
+                            Ypred = Ypred_central_sel;
+                            save(fullfile(output_dir_y, ['Ycentral_sel_' set_name '.mat'] ), 'Ypred', 'acc', 'acc_xclass', 'C', '-v7.3');
                         end
                     end                       
 

@@ -128,7 +128,7 @@ function status = internal_run_pipe(status)
             if ff >= initial_network_ff
                 if network_config_file_list(ff).name(1)~='.'
                     network_config_file = fullfile(CONFIG_PATH, 'network', network_config_file_list(ff).name);
-                    network{end+1} = create_network(fullfile(STRUCT_PATH, 'network'), network_config_file_list(ff).name, network_config_file);
+                    network{end+1} = create_network(fullfile(STRUCT_PATH, 'network'), network_config_file_list(ff).name(1:end-2), network_config_file);
                     
                 end
                 
@@ -177,7 +177,7 @@ function status = internal_run_pipe(status)
 
         %% Analyze!
         results_config_filename = 'ciao';
-        results_config_file = fullfile(CONFIG_PATH, 'results', experiment_config_filename);
+        results_config_file = fullfile(CONFIG_PATH, 'results', results_config_filename);
         results = {};
         for ff=1:numel(network)
             results{ff} = analyze_experiment(fullfile(STRUCT_PATH, 'results'), results_config_filename, experiment{ff}, results_config_file);
