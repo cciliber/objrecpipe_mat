@@ -13,13 +13,13 @@ Ypred_array = res_struct.Ypred;
 Y_array = res_struct.Y;
 
 
-res_struct.Y = cell(Ncat, 1);
+res_struct.Y = cell(Ncat, NobjPerCat, Ntransfs, Ndays, Ncameras);
 
-res_struct.Ypred = cell(Ncat, 1);
-%res_struct.Ypred_01 = cell(Ncat, 1);
+res_struct.Ypred = cell(Ncat, NobjPerCat, Ntransfs, Ndays, Ncameras);
+%res_struct.Ypred_01 = cell(Ncat, NobjPerCat, Ntransfs, Ndays, Ncameras);
 
-res_struct.Ypred_filtered = cell(Ncat, 1);
-%res_struct.Ypred01_filtered = cell(Ncat, 1);
+res_struct.Ypred_filtered = cell(Ncat, NobjPerCat, Ntransfs, Ndays, Ncameras);
+%res_struct.Ypred01_filtered = cell(Ncat, NobjPerCat, Ntransfs, Ndays, Ncameras);
 
 
 %% Parse the registry
