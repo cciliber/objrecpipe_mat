@@ -23,6 +23,11 @@ network.caffestuff.preprocessing.GRID.mirror = true;
 % whether we want to extract features
 extract_features = true;
 
+% whether to save only the features of the central crop
+% it is used only if NCROPS>1
+% (depending on network.caffestuff.preprocessing defined in the config)
+save_only_central_feat = true;
+    
 % which features we want to extract
 feat_names = {'pool5', 'fc7-N'};
 % feat_names = {'conv3', 'conv4', 'pool5', 'fc6', 'fc7'};

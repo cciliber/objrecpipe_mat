@@ -13,5 +13,6 @@ network.caffestuff.preprocessing.GRID.mirror = true;
 
 %% Feature extraction
 extract_features = true;
+save_only_central_feat = true;
 feat_names = {'pool5', 'fc7'};
 % feat_names = {'conv3', 'conv4', 'pool5', 'fc6', 'fc7'};

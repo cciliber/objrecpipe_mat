@@ -21,6 +21,11 @@ function experiment = experiment_network(experiment_root_path, experiment_name, 
     
     % which features we want to extract    
     experiment.feat_names = feat_names;
+    
+    % whether to save only the features of the central crop
+    % it is used only if NCROPS>1 
+    % (depending on network.caffestuff.preprocessing defined in the config)
+    experiment.save_only_central_feat = save_only_central_feat;
         
     experiment = new_extract_feat_and_pred_cat(setup_data,question,network,experiment);
     

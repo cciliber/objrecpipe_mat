@@ -14,6 +14,7 @@ camera_lists_all = question.setlist.camera_lists_all;
 if isfield(experiment,'extract_features')
     extract_features = experiment.extract_features;
     feat_names = experiment.feat_names;
+    save_only_central_feat = experiment.save_only_central_feat;
 else
     extract_features = 0;
 end
@@ -309,6 +310,9 @@ for icat=1:length(cat_idx_all)
                             for imidx=1:bsize_curr
                                 for ff=1:nFeat
                                     fc = squeeze(feat{ff}(:,:,imidx));
+                                    if NCROPS>1 && save_only_central_feat
+                                        fc = fc(:, central_score_idx);
+                                    end
                                     outpath = fullfile(output_dir_fc, feat_names{ff}, fileparts(REG{bstart+imidx-1}));
                                     check_output_dir(outpath);
                                     save(fullfile(output_dir_fc, feat_names{ff}, [REG{bstart+imidx-1}(1:(end-4)) '.mat']), 'fc');
