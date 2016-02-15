@@ -47,23 +47,28 @@ camera_lists_all = question.setlist.camera_lists_all;
 for icat=1:length(cat_idx_all)
     
     cat_idx = cat_idx_all{icat};
+    cells_sel{1} = cat_idx;
     
     for iobj=1:length(obj_lists_all)
         
         obj_list = obj_lists_all{iobj}{eval_set};
+        cells_sel{2} = obj_list;
         
         for itransf=1:length(transf_lists_all)
             
             transf_list = transf_lists_all{itransf}{eval_set};
+            cells_sel{3} = transf_list;
             
             for iday=1:length(day_lists_all)
                  
                 day_list = day_lists_all{iday}{eval_set};
                 day_mapping = day_mappings_all{iday}{eval_set};
+                cells_sel{4} = day_list;
                 
                 for icam=1:length(camera_lists_all)
                     
                     camera_list = camera_lists_all{icam}{eval_set};
+                    cells_sel{5} = camera_list;
                     
                     %% Create the test set name
                     set_name = [strrep(strrep(num2str(obj_list), '   ', '-'), '  ', '-') ...
@@ -157,12 +162,14 @@ for icat=1:length(cat_idx_all)
                         Y_avg_struct.Y = Y; 
                     end 
                     Y_avg_struct = putYinCell(setup_data.dset, REG, Y_avg_struct);
-                    Y_avg_struct.A{iacc} = computeAcc(Y_avg_struct.Y, Yavg_struct.Ypred, acc_dimensions);
+                    nclasses = size(Y_avg_struct.C,2);
+                    Y_avg_struct.A{iacc} = computeAcc(Y_avg_struct.Y, Yavg_struct.Ypred, nclasses, cells_sel, acc_dimensions);
                     
                     if isempty(network.mapping)
                         Y_avg_sel_struct.Y = Y;
                         Y_avg_sel_struct = putYinCell(setup_data.dset, REG, Y_avg_sel_struct);
-                        Y_avg_sel_struct = computeAcc(Y_avg_sel_struct.Y, Y_avg_sel_struct.Ypred, acc_dimensions);
+                        nclasses = size(Y_avg_sel_struct.C,2);
+                        Y_avg_sel_struct = computeAcc(Y_avg_sel_struct.Y, Y_avg_sel_struct.Ypred, nclasses, cells_cel, acc_dimensions);
                     end    
                     
                     if NCROPS>1
@@ -177,12 +184,14 @@ for icat=1:length(cat_idx_all)
                             Y_central_struct.Y = Y;
                         end   
                         Y_central_struct = putYinCell(setup_data.dset, REG, Y_central_struct);
-                        Y_central_struct = computeAcc(Y_central_struct.Y, Y_central_struct.Ypred, acc_dimensions);
+                        nclasses = size(Y_central_struct.C,2);
+                        Y_central_struct = computeAcc(Y_central_struct.Y, Y_central_struct.Ypred, nclasses, cells_sel, acc_dimensions);
                         
                         if isempty(network.mapping) 
                             Y_central_sel_struct.Y = Y;
                             Y_central_sel_struct = putYinCell(setup_data.dset, REG, Y_central_sel_struct);
-                            Y_central_sel_struct = computeAcc(Y_central_sel_struct.Y, Y_central_sel_struct.Ypred, acc_dimensions);
+                            nclasses = size(Y_central_sel_struct.C,2);
+                            Y_central_sel_struct = computeAcc(Y_central_sel_struct.Y, Y_central_sel_struct.Ypred, nclasses, cells_sel, acc_dimensions);
                         end
                         
                     end                       

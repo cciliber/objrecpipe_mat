@@ -74,7 +74,7 @@ for ii=1:length(dirlist)
     ypred = Ypred_array(idx_start:idx_end);
     ypred_filtered = mode(ypred);
     
-    res_struct.Y{dset.Cat{cat}, obj, dset.Transfs(transf), dset.Days(day), dset.Cameras(cam)} = ytrue(1);
+    res_struct.Y{dset.Cat{cat}, obj, dset.Transfs(transf), dset.Days(day), dset.Cameras(cam)} = ytrue;
     
     res_struct.Ypred{dset.Cat{cat}, obj, dset.Transfs(transf), dset.Days(day), dset.Cameras(cam)} = ypred;
     %res_struct.Ypred01{dset.Cat{cat}, obj, dset.Transfs(transf), dset.Days(day), dset.Cameras(cam)} = (ytrue==ypred);
