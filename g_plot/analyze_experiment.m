@@ -10,26 +10,15 @@ else
     run(results_config_script);
 end
   
-%% Assign defined values to the struct 
+%% Assign defined values to the struct
+
 results = struct;
 
 results.results_struct_path = fullfile(results_root_path, results_name);
 
+results.acc_dimensions = acc_dimensions;
 
-% pointer to the image set used for the experiment
-results.dset_dir = dset_dir;
-
-% whether we want to extract features
-results.extract_features = extract_features;
-
-% which features we want to extract
-results.feat_names = feat_names;
-
-results = new_analyze_predictions(setup_data, experiment);
-
- 
-% keep track 
-results.a = a;
+results = new_analyze_predictions(setup_data, experiment, results);
    
 % save
 save(results.results_struct_path,'results');

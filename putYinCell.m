@@ -1,6 +1,17 @@
 function res_struct = putYinCell(dset, REG_array, res_struct)
+%% function res_struct = putYinCell(dset, REG_array, res_struct)
+% res_struct input fields:
+%    Y (array)
+%    Ypred (array)
+%    acc, acc_xclass, C (not used)
 
+% res_struct output fields:
+%    Y (cell array)
+%    Ypred (cell array)
+%    Ypred_filtered (cell array)
+%    acc, acc_xclass, C (not used)
 
+%% Read from dset
 
 Ncat = dset.Ncat;
 NobjPerCat = dset.NobjPerCat;
@@ -8,10 +19,12 @@ Ntransfs = dset.Ntransfs;
 Ndays = dset.Ndays;
 Ncameras = dset.Ncameras;
 
+%% Read from res_struct
 
 Ypred_array = res_struct.Ypred;
 Y_array = res_struct.Y;
 
+%% Allocate cell arrays
 
 res_struct.Y = cell(Ncat, NobjPerCat, Ntransfs, Ndays, Ncameras);
 
@@ -21,14 +34,15 @@ res_struct.Ypred = cell(Ncat, NobjPerCat, Ntransfs, Ndays, Ncameras);
 res_struct.Ypred_filtered = cell(Ncat, NobjPerCat, Ntransfs, Ndays, Ncameras);
 %res_struct.Ypred01_filtered = cell(Ncat, NobjPerCat, Ntransfs, Ndays, Ncameras);
 
+%% Parse the registry REG_array
 
-%% Parse the registry
 dirlist = cellfun(@fileparts, REG_array, 'UniformOutput', false);
 [dirlist, ia, ic] = unique(dirlist, 'stable'); % [C,ia,ic] = unique(A) % C = A(ia) % A = C(ic)
 dirlist_splitted = regexp(dirlist, '/', 'split');
 dirlist_splitted = vertcat(dirlist_splitted{:});
 
 %% Get number of frames per directory
+
 Ndirs = numel(dirlist);
 Nframes = zeros(Ndirs,1);
 for ii=1:length(dirlist)
@@ -36,6 +50,7 @@ for ii=1:length(dirlist)
 end
 
 %% And its range of indices in the Y arrays
+
 startend = zeros(Ndirs+1,1);
 startend(2:end) = cumsum(Nframes);
 
