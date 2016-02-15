@@ -166,9 +166,25 @@ for icat=1:length(cat_idx_all)
                         end
                         % features to extract
                         if extract_features 
-                            if any(~ismember(feat_names, net.blob_names))
-                                error('Blob not present!');
+                            
+                            for idx_feat_name = 1:numel(feat_names)
+                                
+                                name_found = false;
+                                for idx_blob_name = 1:numel(net.blob_names)
+                                    if numel(findstr(feat_names{idx_feat_name},net.blob_names{idx_blob_name}))>0 
+                                            
+                                        feat_names{idx_feat_name} = net.blob_names{idx_blob_name};
+                                        name_found = true;
+                                        break;
+                                    end
+                                end
+                                
+                                if ~name_found
+                                   error(sprintf('Blob "%s" not present!',feat_names{idx_feat_name}));
+                                end
                             end
+                            
+                          
                             nFeat = length(feat_names);
                         end
                         
@@ -182,11 +198,28 @@ for icat=1:length(cat_idx_all)
                             net.blobs('data').reshape([CROP_SIZE CROP_SIZE 3 max_bsize*NCROPS])
                             net.reshape() % optional: the net reshapes automatically before a call to forward()
                         end
+                        
                         % features to extract
-                        if extract_features
-                            if any(~ismember(feat_names, net.blob_names))
-                                error('Blob not present!');
+                        if extract_features 
+                            
+                            for idx_feat_name = 1:numel(feat_names)
+                                
+                                name_found = false;
+                                for idx_blob_name = 1:numel(net.blob_names)
+                                    if numel(findstr(feat_names{idx_feat_name},net.blob_names{idx_blob_name}))>0 
+                                            
+                                        feat_names{idx_feat_name} = net.blob_names{idx_blob_name};
+                                        name_found = true;
+                                        break;
+                                    end
+                                end
+                                
+                                if ~name_found
+                                   error(sprintf('Blob "%s" not present!',feat_names{idx_feat_name}));
+                                end
                             end
+                            
+                          
                             nFeat = length(feat_names);
                         end
                         
