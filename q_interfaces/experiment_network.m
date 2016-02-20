@@ -8,6 +8,7 @@ function experiment = experiment_network(experiment_root_path, experiment_name, 
         run(experiment_config_script);
     end
     
+    check_output_dir(experiment_root_path);
     
     experiment = struct;
   
@@ -27,15 +28,62 @@ function experiment = experiment_network(experiment_root_path, experiment_name, 
     % (depending on network.caffestuff.preprocessing defined in the config)
     experiment.save_only_central_feat = save_only_central_feat;
         
-    experiment = new_extract_feat_and_pred_cat(setup_data,question,network,experiment);
+    %% Setup preprocessing
+    
+    prep = network.caffestuff.preprocessing;
+    prep.NCROPS_grid = (prep.GRID.nodes*prep.GRID.nodes+mod(prep.GRID.nodes+1,2)+prep.GRID.resize)*(prep.GRID.mirror+1);
+    
+    if ~isempty(prep.OUTER_GRID)
+        prep.NCROPS_scale = prep.NCROPS_grid*prep.OUTER_GRID;
+    else
+        prep.NCROPS_scale = prep.NCROPS_grid;
+    end
+    
+    if ~isfield(prep, 'SCALING')
+        prep.centralscale = 1;
+        prep.NSCALES = 1;
+    elseif size(prep.SCALING.scales,1)==1
+        prep.centralscale = 1;
+        prep.NSCALES = 1;
+    else
+        prep.centralscale = prep.SCALING.centralscale;
+        prep.NSCALES = size(prep.SCALING.scales, 1);
+    end
+    
+    prep.central_score_idx = (prep.centralscale-1)*prep.NCROPS_scale;
+    
+    if ~isempty(prep.OUTER_GRID)
+        prep.central_score_idx = prep.central_score_idx + prep.NCROPS_grid*(prep.OUTER_GRID-1)/2;
+    end
+    
+    if mod(prep.GRID.nodes, 2)
+        prep.central_score_idx = prep.central_score_idx + ceil(prep.GRID.nodes*prep.GRID.nodes/2);
+    else
+        prep.central_score_idx = prep.central_score_idx + prep.GRID.nodes*prep.GRID.nodes+1;
+    end
+    
+    prep.NCROPS = prep.NCROPS_scale*prep.NSCALES;
+    
+    prep.max_bsize = round(500/prep.NCROPS);
+    
+    network.caffestuff.preprocessing = prep;
     
     
+    experiment.prep = prep;
     
-    % keep track of which question and which network have been tested
-    experiment.network_struct_path = network.network_struct_path;
+    %% Go!
+    
+    new_extract_feat_and_pred_cat(setup_data, question, network, experiment);
+    
+    %% Keep track of which question and which network have been tested
+    
     experiment.question_struct_path = question.question_struct_path;
     
-    save(network.network_struct_path,'experiment');
+    experiment.network_struct_path = network.network_struct_path;
+    %save(experiment.network_struct_path, 'network'); 
+  
+    save(experiment.experiment_struct_path, 'experiment');
+    
     
 end
 

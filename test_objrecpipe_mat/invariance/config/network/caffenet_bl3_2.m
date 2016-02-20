@@ -22,5 +22,5 @@ caffestuff.MEAN_H = 256;
 % See templates for the list of settable params
 base_lr = 1e-3;
 fc8_name = 'fc8-N';
-fc8_final_W = 10*base_lr;
+fc8_final_W = 1e-2;
 fc8_final_b = 2*fc8_final_W;

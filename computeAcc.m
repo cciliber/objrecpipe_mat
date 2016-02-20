@@ -14,9 +14,9 @@ end
 %% Assign number of elements per dimension
 N = zeros(Ydim,1);
 cells_pool = cell(Ydim,1);
-for idim=1:dimY
+for idim=1:Ydim
     
-    N(idim) = size(cells_sel,idim);
+    N(idim) = numel(cells_sel{idim});
     cells_pool{idim} = ones(N(idim),1);
     
     if size(cellY,idim)~=size(cellYpred,idim)
@@ -48,7 +48,7 @@ for iacc=1:Nacc
     pool = cells_pool;
     if ~isempty(dims_toaverage)
         for idim=1:numel(dims_toaverage)
-            pool{dims_toaverage{idim}} = N(dims_toaverage{idim});
+            pool{dims_toaverage(idim)} = N(dims_toaverage(idim));
         end
     end
    
@@ -63,13 +63,25 @@ for iacc=1:Nacc
     ypred = cellfun(@unroll, ypred, 'UniformOutput', 0);
     y = cellfun(@unroll, y, 'UniformOutput', 0);                
     
+    ypred = cellfun(@(x) x+1, ypred, 'UniformOutput', 0);
+    y = cellfun(@(x) x+1, y, 'UniformOutput', 0); 
     
-    [A, A_xclass, C] = cellfun(@trace_confusion, y, ypred, repmat({nclasses}, size(y)), 'UniformOutput', 0);
-    
-    size(A) = size(ypred) = pool{1}, pool{2}, pool{3}, pool{4}, pool{5}
+    [tmpA, tmpA_xclass, tmpC] = cellfun(@trace_confusion, y, ypred, repmat({nclasses}, size(y)), 'UniformOutput', 0);
     
     
-    AA{1}((cc-1)*length(obj_list)+idxo,(idxt-1)*length(day_mapping)*length(camera_list)+(idxd-1)*length(camera_list)+idxe)
+    nclasses_real = numel(tmpA_xclass{1,1,1,1,1});
+    
+    tmpV = [tmpA{:}];
+    A{iacc} = reshape(tmpV', numel(pool{1}), numel(pool{2}), numel(pool{3}), numel(pool{4}), numel(pool{5}));
+    
+    
+    tmpV = [tmpA_xclass{:}];
+    A_xclass{iacc} = reshape(tmpV', numel(pool{1}), numel(pool{2}), numel(pool{3}), numel(pool{4}), numel(pool{5}), nclasses_real, 1);
+    
+    
+    tmpV = cellfun(@(x) x(:), tmpC, 'UniformOutput', 0);
+    tmpV = [tmpV{:}];
+    C{iacc} = reshape(tmpV', numel(pool{1}), numel(pool{2}), numel(pool{3}), numel(pool{4}), numel(pool{5}), nclasses_real, nclasses);
     
 end
 
@@ -106,10 +118,10 @@ end
 % end
 % 
 for i1=1:3
-    for i2=1:4
-        for i3=1:5
-            for i4=1:6
-                prova{i1,i2,i3,i4} = [i1 i2 i3 i4]';
+    for i2=1:5
+        for i3=1:6
+            for i4=1:7
+                prova{i1,i2,i3,i4} = rand(4);
             end
         end
     end

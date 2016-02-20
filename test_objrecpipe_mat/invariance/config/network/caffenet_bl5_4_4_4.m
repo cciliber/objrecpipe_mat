@@ -25,9 +25,11 @@ base_lr = 1e-5;
 fc8_name = 'fc8-N';
 fc7_name = 'fc7-N';
 fc6_name = 'fc6-N';
-fc8_final_W = 10*base_lr;
-fc7_final_W = 10*base_lr;
-fc6_final_W = 10*base_lr;
+fc8_final_W = 1e-4;
+fc7_final_W = 1e-4;
+fc6_final_W = 1e-4;
 fc8_final_b = 2*fc8_final_W;
 fc7_final_b = 2*fc7_final_W;
 fc6_final_b = 2*fc6_final_W;
+
+

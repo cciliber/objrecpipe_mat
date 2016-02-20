@@ -1,4 +1,4 @@
-function experiment = new_extract_feat_and_pred_cat(setup_data,question,network,experiment)
+function new_extract_feat_and_pred_cat(setup_data,question,network,experiment)
 
 % new_extract_feat_and_pred_cat(  network.caffestuff)
 
@@ -26,7 +26,7 @@ trainval_sets = [1,2];
 % temporary ?
 eval_set = numel(question.setlist.obj_lists_all{1});
 
-
+h_figure = figure;
 
 %% Setup the IO root directories
 
@@ -46,41 +46,8 @@ caffe.set_device(gpu_id);
 
 %% Caffe preprocesing initialization
 
-prep = network.caffestuff.preprocessing;
-NCROPS_grid = (prep.GRID.nodes*prep.GRID.nodes+mod(prep.GRID.nodes+1,2)+prep.GRID.resize)*(prep.GRID.mirror+1);
-
-if ~isempty(prep.OUTER_GRID)
-    NCROPS_scale = NCROPS_grid*prep.OUTER_GRID; 
-else
-    NCROPS_scale = NCROPS_grid;
-end
-
-if ~isfield(prep, 'SCALING') 
-    centralscale = 1;
-    NSCALES = 1;
-elseif size(prep.SCALING.scales,1)==1
-    centralscale = 1;
-    NSCALES = 1;
-else
-    centralscale = prep.SCALING.centralscale;
-    NSCALES = size(prep.SCALING.scales, 1);
-end
-
-central_score_idx = (centralscale-1)*NCROPS_scale;
-
-if ~isempty(prep.OUTER_GRID)
-    central_score_idx = central_score_idx + NCROPS_grid*(prep.OUTER_GRID-1)/2;
-end
-
-if mod(prep.GRID.nodes, 2)
-    central_score_idx = central_score_idx + ceil(prep.GRID.nodes*prep.GRID.nodes/2);
-else
-    central_score_idx = central_score_idx + prep.GRID.nodes*prep.GRID.nodes+1;
-end
-
-NCROPS = NCROPS_scale*NSCALES; 
-
-max_bsize = round(500/NCROPS);
+% prep = network.caffestuff.preprocessing;
+prep = experiment.prep;
 
 caffe_model_name = network.caffestuff.net_name;
 
@@ -89,22 +56,58 @@ caffe_model_name = network.caffestuff.net_name;
 for icat=1:length(cat_idx_all)
     
     cat_idx = cat_idx_all{icat};
+
+
+    %% Assign IO directories
+    dir_regtxt_relative = fullfile(['Ncat_' num2str(length(cat_idx))], strrep(strrep(num2str(cat_idx), '   ', '-'), '  ', '-'));
+    dir_regtxt_relative = fullfile(dir_regtxt_relative, question.question_dir);
+
+    input_dir_regtxt = fullfile(input_dir_regtxt_root, dir_regtxt_relative);
+    check_input_dir(input_dir_regtxt);
+    
+
+    % Assign the labels
+    fid_labels = fopen(fullfile(input_dir_regtxt, 'labels.txt'), 'r');
+    Y_digits = textscan(fid_labels,'%s %d');
+    Y_digits = Y_digits{1};
+    fclose(fid_labels);
+    
+    
     
     for iobj=1:length(obj_lists_all)
         
         obj_list = obj_lists_all{iobj}{eval_set};
+      
+        
+        if isempty(obj_list)
+            obj_list = obj_lists_all{1}{eval_set};
+        end
+        
         
         for itransf=1:length(transf_lists_all)
             
             transf_list = transf_lists_all{itransf}{eval_set};
             
+
+            if isempty(transf_list)
+                transf_list = transf_lists_all{1}{eval_set};
+            end
+            
             for iday=1:length(day_lists_all)
                 
                 day_mapping = day_mappings_all{iday}{eval_set};
+            
+                if isempty(day_mapping)
+                    day_mapping = day_mappings_all{1}{eval_set};
+                end                
                 
                 for icam=1:length(camera_lists_all)
                     
-                    camera_list = camera_lists_all{icam}{eval_set};
+                    camera_list = camera_lists_all{icam}{eval_set};                    
+
+                    if isempty(camera_list)
+                        camera_list = camera_lists_all{1}{eval_set};
+                    end
                     
                     %% Create the test set name
                     set_name = [strrep(strrep(num2str(obj_list), '   ', '-'), '  ', '-') ...
@@ -130,12 +133,6 @@ for icat=1:length(cat_idx_all)
                     
                     %% Assign IO directories
                     
-                    dir_regtxt_relative = fullfile(['Ncat_' num2str(length(cat_idx))], strrep(strrep(num2str(cat_idx), '   ', '-'), '  ', '-'));
-                    dir_regtxt_relative = fullfile(dir_regtxt_relative, question.question_dir);
-                    
-                    input_dir_regtxt = fullfile(input_dir_regtxt_root, dir_regtxt_relative);
-                    check_input_dir(input_dir_regtxt);
-                    
                     if isfield(network, 'network_dir')
                         output_dir_y = fullfile(exp_dir, caffe_model_name, dir_regtxt_relative, trainval_dir, network.mapping, network.network_dir);
                     else
@@ -160,8 +157,8 @@ for icat=1:length(cat_idx_all)
                         inputshape = net.blobs('data').shape();
                         CROP_SIZE = inputshape(1);
                         bsize_net = inputshape(4);
-                        if max_bsize*NCROPS ~= bsize_net
-                            net.blobs('data').reshape([CROP_SIZE CROP_SIZE 3 max_bsize*NCROPS])
+                        if prep.max_bsize*prep.NCROPS ~= bsize_net
+                            net.blobs('data').reshape([CROP_SIZE CROP_SIZE 3 prep.max_bsize*prep.NCROPS])
                             net.reshape() % optional: the net reshapes automatically before a call to forward()
                         end
                         % features to extract
@@ -194,8 +191,8 @@ for icat=1:length(cat_idx_all)
                         inputshape = net.blobs('data').shape();
                         CROP_SIZE = inputshape(1);
                         bsize_net = inputshape(4);
-                        if max_bsize*NCROPS ~= bsize_net
-                            net.blobs('data').reshape([CROP_SIZE CROP_SIZE 3 max_bsize*NCROPS])
+                        if prep.max_bsize*prep.NCROPS ~= bsize_net
+                            net.blobs('data').reshape([CROP_SIZE CROP_SIZE 3 prep.max_bsize*prep.NCROPS])
                             net.reshape() % optional: the net reshapes automatically before a call to forward()
                         end
                         
@@ -233,7 +230,12 @@ for icat=1:length(cat_idx_all)
                         score_length = net.blobs('prob').shape();
                         score_length = score_length(1);
                         if sum(sel_idxs>score_length)
-                            error('You are selecting scores out of net range!');
+                            tmp_score_length = max(sel_idxs);
+                            
+                            warning('You are selecting scores out of net range! Reducing to only the known ones');
+                            sel_idxs(sel_idxs>score_length)=[];
+                            
+                            score_length = tmp_score_length;
                         end
                     end
                     
@@ -261,14 +263,14 @@ for icat=1:length(cat_idx_all)
                     if isempty(network.mapping)
                         Ypred_avg_sel = zeros(Nsamples,1);
                     end
-                    if NCROPS>1
+                    if prep.NCROPS>1
                         Ypred_central = zeros(Nsamples,1);
                         if isempty(network.mapping)
                             Ypred_central_sel = zeros(Nsamples,1);
                         end
                     end
                       
-                    bsize = min(max_bsize, Nsamples);
+                    bsize = min(prep.max_bsize, Nsamples);
                     Nbatches = ceil(Nsamples/bsize);
                     
                     for bidx=1:Nbatches
@@ -279,16 +281,25 @@ for icat=1:length(cat_idx_all)
                         
                         inputshape = net.blobs('data').shape();
                         bsize_net = inputshape(4);
-                        if bsize_curr*NCROPS ~= bsize_net
-                            net.blobs('data').reshape([CROP_SIZE CROP_SIZE 3 bsize_curr*NCROPS])
+                        if bsize_curr*prep.NCROPS ~= bsize_net
+                            net.blobs('data').reshape([CROP_SIZE CROP_SIZE 3 bsize_curr*prep.NCROPS])
                             net.reshape() % optional: the net reshapes automatically before a call to forward()
                         end
                         
+                        idx_rand_im = randperm(bsize_curr,1);
+                        rand_im = [];
+                        
+                        
                         % load images and preprocess one by one
-                        input_data = zeros(CROP_SIZE,CROP_SIZE,3,bsize_curr*NCROPS, 'single');
+                        input_data = zeros(CROP_SIZE,CROP_SIZE,3,bsize_curr*prep.NCROPS, 'single');
                         for imidx=1:bsize_curr
                             im = imread(fullfile(dset_dir, [REG{bstart+imidx-1}(1:(end-4)) '.jpg']));
-                            input_data(:,:,:,((imidx-1)*NCROPS+1):(imidx*NCROPS)) = prepare_image(im, prep, network.caffestuff.mean_data, CROP_SIZE); 
+                            input_data(:,:,:,((imidx-1)*prep.NCROPS+1):(imidx*prep.NCROPS)) = prepare_image(im, prep, network.caffestuff.mean_data, CROP_SIZE); 
+                            
+                            if imidx == idx_rand_im
+                                rand_im = im;
+                            end
+                             
                         end
                         
                         % extract scores in batches
@@ -304,12 +315,12 @@ for icat=1:length(cat_idx_all)
                         end
                         
                         % reshape, dividing scores per image
-                        scores = reshape(scores, [], NCROPS, bsize_curr);
+                        scores = reshape(scores, [], prep.NCROPS, bsize_curr);
                         
                         % reshape, dividing features per image
                         if extract_features
                             for ff=1:nFeat 
-                                feat{ff} = reshape(feat{ff}, [], NCROPS, bsize_curr);
+                                feat{ff} = reshape(feat{ff}, [], prep.NCROPS, bsize_curr);
                             end
                         end
                         
@@ -319,6 +330,15 @@ for icat=1:length(cat_idx_all)
                         [~, maxlabel_avg] = max(avg_scores);
                         maxlabel_avg = maxlabel_avg - 1;
                         Ypred_avg(bstart:bend) = maxlabel_avg;
+                        
+                        
+%                         
+%                         figure(h_figure);
+%                         imshow(rand_im);
+%                         title( sprintf('Predicted: %s',Y_digits{ maxlabel_avg(idx_rand_im)+1} ) );
+%                         pause(0.001);
+                        
+%                         
                         if isempty(network.mapping)
                             % select
                             avg_scores_sel = avg_scores(sel_idxs, :);
@@ -327,9 +347,9 @@ for icat=1:length(cat_idx_all)
                             Ypred_avg_sel(bstart:bend) = maxlabel_avg_sel;
                         end
                         
-                        if NCROPS>1
+                        if prep.NCROPS>1
                             % take central score over crops
-                            central_scores = squeeze(scores(:,central_score_idx,:));  
+                            central_scores = squeeze(scores(:,prep.central_score_idx,:));  
                             [~, maxlabel_central] = max(central_scores);
                             maxlabel_central = maxlabel_central - 1;
                             Ypred_central(bstart:bend) = maxlabel_central;
@@ -347,8 +367,8 @@ for icat=1:length(cat_idx_all)
                             for imidx=1:bsize_curr
                                 for ff=1:nFeat
                                     fc = squeeze(feat{ff}(:,:,imidx));
-                                    if NCROPS>1 && save_only_central_feat
-                                        fc = fc(:, central_score_idx);
+                                    if prep.NCROPS>1 && save_only_central_feat
+                                        fc = fc(:, prep.central_score_idx);
                                     end
                                     outpath = fullfile(output_dir_fc, feat_names{ff}, fileparts(REG{bstart+imidx-1}));
                                     check_output_dir(outpath);
@@ -385,7 +405,7 @@ for icat=1:length(cat_idx_all)
                         save(fullfile(output_dir_y, ['Yavg_sel_' set_name '.mat'] ), 'Ypred', 'acc', 'acc_xclass', 'C', '-v7.3');  
                     end
                     
-                    if NCROPS>1
+                    if prep.NCROPS>1
                         saving_acc = true;
                         if isempty(network.mapping)
                             if question.setlist.create_imnetlabels

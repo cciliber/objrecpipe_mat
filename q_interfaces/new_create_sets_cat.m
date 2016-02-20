@@ -33,8 +33,7 @@ reg_dir = fullfile(DATA_DIR, 'iCubWorldUltimate_registries/full_registries');
 check_input_dir(reg_dir);
 
 % output root dir for registries of the subsets
-%output_dir_regtxt_root = fullfile(DATA_DIR, 'iCubWorldUltimate_registries', 'categorization');
-output_dir_regtxt_root = fullfile(DATA_DIR, 'iCubWorldUltimate_registries', 'categorization_prova');
+output_dir_regtxt_root = fullfile(DATA_DIR, 'iCubWorldUltimate_registries', 'categorization');
 
 %% For each experiment, go!
 for eval_set = 1:num_eval_sets

@@ -211,9 +211,22 @@ for icat=1:length(cat_idx_all)
                     end
  
                     % maximize val accuracy
+                    Ttr = readtable(fullfile(output_dir, 'caffe.INFO.train.txt'), 'Delimiter', ',');
+                    
                     T = readtable(fullfile(output_dir, 'caffe.INFO.test.txt'), 'Delimiter', ',');
                     val_acc = T.acc;
                     [~, epoch_idx] = max(val_acc);
+                    
+%                     figure;
+%                     hold on;
+%                     plot(Ttr.acc);
+%                     plot(T.acc);
+%                     plot(Ttr.loss);
+%                     plot(T.loss);
+%                     legend({'Acc tr','Acc va','Loss tr','Loss va'});
+%                     title(network.network_dir);
+%                     hold off;
+%                     pause(0.001);
  
                     if epoch_idx == 1
                         warning('Your loss diverged.');

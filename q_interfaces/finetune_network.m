@@ -1,5 +1,9 @@
 function network = finetune_network(question,network,finetune_config_script)
 
+    if isempty(network.mapping)
+        return;
+    end
+
     setup_data = setup_machine();
     
     run(finetune_config_script);
