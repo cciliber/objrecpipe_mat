@@ -1,9 +1,7 @@
-function experiment = experiment_network(experiment_root_path, experiment_name, question, network, experiment_config_script)
-
-    setup_data = setup_machine();
+function experiment = experiment_network(setup_data, experiment_root_path, experiment_name, question, network, experiment_config_script)
     
-    if nargin<4
-        default_experiment_network_config;
+    if nargin<6
+        default_extraction_config;
     else
         run(experiment_config_script);
     end
@@ -16,6 +14,16 @@ function experiment = experiment_network(experiment_root_path, experiment_name, 
     
     % pointer to the image set used for the experiment
     experiment.dset_dir = dset_dir;
+    
+    % assign output_root_dir
+    if ~isempty(network.network_dir) && tuning_round>1
+        output_dir_root = fileparts(fileparts(network.net_weights));
+    else
+        output_dir_root = fullfile(setup_data.DATA_DIR, [dset_name '_experiments'], network.caffestuff.network_kind);
+    end
+    
+    % pointer to the result dir
+    experiment.output_dir_root = output_dir_root;
     
     % whether we want to extract features
     experiment.extract_features = extract_features;
@@ -73,14 +81,13 @@ function experiment = experiment_network(experiment_root_path, experiment_name, 
     
     %% Go!
     
-    new_extract_feat_and_pred_cat(setup_data, question, network, experiment);
+    new_extract_feat_and_pred(setup_data, question, network, experiment);
     
     %% Keep track of which question and which network have been tested
     
     experiment.question_struct_path = question.question_struct_path;
     
-    experiment.network_struct_path = network.network_struct_path;
-    %save(experiment.network_struct_path, 'network'); 
+    experiment.network_struct_path = network.network_struct_path; 
   
     save(experiment.experiment_struct_path, 'experiment');
     

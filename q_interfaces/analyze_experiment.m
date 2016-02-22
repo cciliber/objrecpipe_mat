@@ -1,13 +1,10 @@
-function results = analyze_experiment(results_root_path, results_name, experiment, results_config_script)
+function results = analyze_experiment(setup_data, results_root_path, results_name, experiment, results_config_script)
 
     check_output_dir(results_root_path);
 
-    %% Setup machine
-    setup_data = setup_machine();
-
     %% Run configuration script
-    if nargin<4
-        default_results_config_script;
+    if nargin<5
+        default_results_config;
     else
         run(results_config_script);
     end
