@@ -1,4 +1,4 @@
-function experiment = experiment_network(experiment_root_path, experiment_name, question, network, experiment_config_script)
+function experiment = dummy_experiment_network(experiment_root_path, experiment_name, question, network, experiment_config_script)
 
     setup_data = setup_machine();
     
@@ -73,7 +73,7 @@ function experiment = experiment_network(experiment_root_path, experiment_name, 
     
     %% Go!
     
-    new_extract_feat_and_pred_cat(setup_data, question, network, experiment);
+%     new_extract_feat_and_pred_cat(setup_data, question, network, experiment);
     
     %% Keep track of which question and which network have been tested
     

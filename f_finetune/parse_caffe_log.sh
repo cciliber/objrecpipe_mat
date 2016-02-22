@@ -1,8 +1,8 @@
 #!/bin/bash
-# Usage parse_log.sh caffe.log output_tr.log output_val.log
+# Usage parse_log.sh caffe.log
 # It creates the following two text files, each containing a table:
 #     caffe.log.test (columns: '#Iters Seconds TestAccuracy TestLoss')
-#     caffe.log.train (columns: '#Iters Seconds TrainAccuracy TrainingLoss LearningRate')
+#     caffe.log.train (columns: '#Iters Seconds TrainingLoss LearningRate')
 
 
 # get the dirname of the script
@@ -31,8 +31,8 @@ grep 'Testing net' $1 >> aux3.txt
 $DIR/extract_seconds.py aux3.txt aux4.txt
 
 # Generating
-echo 'iter,sec,acc,loss'> $3
-paste -d, aux0.txt aux4.txt aux1.txt aux2.txt >> $3
+echo 'iter,sec,acc,loss'> $LOG.test.txt
+paste -d, aux0.txt aux4.txt aux1.txt aux2.txt >> $LOG.test.txt
 rm aux.txt aux0.txt aux1.txt aux2.txt aux3.txt aux4.txt
 
 # For extraction of time since this line contains the start time
@@ -47,6 +47,6 @@ grep 'Train net output #0' $1 | awk '{print $11}' > aux4.txt
 $DIR/extract_seconds.py aux.txt aux3.txt
 
 # Generating
-echo 'iter,sec,acc,loss,lr'> $2
-paste -d, aux0.txt aux3.txt aux4.txt aux1.txt aux2.txt >> $2
+echo 'iter,sec,acc,loss,lr'> $LOG.train.txt
+paste -d, aux0.txt aux3.txt aux4.txt aux1.txt aux2.txt >> $LOG.train.txt
 rm aux.txt aux0.txt aux1.txt aux2.txt  aux3.txt aux4.txt

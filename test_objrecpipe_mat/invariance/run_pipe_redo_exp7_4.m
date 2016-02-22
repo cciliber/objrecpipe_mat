@@ -19,16 +19,16 @@ STRUCT_PATH = fullfile(TEST_DIR, ANALYSIS, 'structs');
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% %% Create and save question (the registries)
+%% Create and save question (the registries)
+question_config_filename = 'id15obj_10trials_tune2transf_redo_7_4';
+question_config_file = fullfile(CONFIG_PATH, 'question', question_config_filename);
+question = create_question(fullfile(STRUCT_PATH, 'question'), question_config_filename, question_config_file);
+
+% %% Load question
 % question_config_filename = 'id15obj_10trials_tune2transf';
-% question_config_file = fullfile(CONFIG_PATH, 'question', question_config_filename);
-% question = create_question(fullfile(STRUCT_PATH, 'question'), question_config_filename, question_config_file);
-
-%% Load question
-question_config_filename = 'id15obj_10trials_tune2transf';
-question = load(fullfile(STRUCT_PATH,'question',question_config_filename));
-question = question.question;
-
+% question = load(fullfile(STRUCT_PATH,'question',question_config_filename));
+% question = question.question;
+% 
 
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -57,41 +57,41 @@ end
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% %% Finetune
-% finetune_config_filename = 'cc256';
-% finetune_config_file = fullfile(CONFIG_PATH, 'finetune', finetune_config_filename);
+%% Finetune
+finetune_config_filename = 'cc256';
+finetune_config_file = fullfile(CONFIG_PATH, 'finetune', finetune_config_filename);
 % for ff=1:numel(network)
 %     network{ff} = finetune_network(question, network{ff}, finetune_config_file);
 % end
-
+network{1} = finetune_network(question, network{1}, finetune_config_file);
 
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% %% Predict and save experiment
-% experiment_config_filename = 'cc256_caffenet_withfeatures';
-% experiment_config_file = fullfile(CONFIG_PATH, 'experiment', experiment_config_filename);
-% experiment = {};
-% for ff=1:numel(network)
-%     experiment_name = [experiment_config_filename '_' question.question_dir '_' network{ff}.network_dir];
-%     experiment{ff} = experiment_network(fullfile(STRUCT_PATH, 'experiment'), experiment_name, question, network{ff}, experiment_config_file);
-% end
-
-%% Load experiment
+%% Predict and save experiment
 experiment_config_filename = 'cc256_caffenet_withfeatures';
+experiment_config_file = fullfile(CONFIG_PATH, 'experiment', experiment_config_filename);
 experiment = {};
-for ff=1:numel(network)
+for ff=1%:numel(network)
     experiment_name = [experiment_config_filename '_' question.question_dir '_' network{ff}.network_dir];
-    experiment{end+1} = load(fullfile(STRUCT_PATH, 'experiment', experiment_name));    
-    experiment{end} = experiment{end}.experiment;
+    experiment{ff} = experiment_network(fullfile(STRUCT_PATH, 'experiment'), experiment_name, question, network{ff}, experiment_config_file);
 end
+
+% %% Load experiment
+% experiment_config_filename = 'cc256_caffenet_withfeatures';
+% experiment = {};
+% for ff=1%:numel(network)
+%     experiment_name = [experiment_config_filename '_' question.question_dir '_' network{ff}.network_dir];
+%     experiment{end+1} = load(fullfile(STRUCT_PATH, 'experiment', experiment_name));    
+%     experiment{end} = experiment{end}.experiment;
+% end
 
 
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Analyze
-results_config_filename = 'ciao';
+results_config_filename = 'ciao_redo';
 results_config_file = fullfile(CONFIG_PATH, 'results', results_config_filename);
 results = {};
 for ff=1

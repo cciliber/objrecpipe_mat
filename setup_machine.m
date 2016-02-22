@@ -1,18 +1,10 @@
-function setup_data = setup_machine(machine)
+function setup_data = setup_machine()
 
 
     setup_data = struct;
 
     %% Code dir
-    if strcmp(machine, 'vicolab')
-        FEATURES_DIR = '/data/giulia/REPOS/objrecpipe_mat';
-    elseif strcmp(machine, 'iit')
-        FEATURES_DIR = '/data/giulia/REPOS/objrecpipe_mat';
-    elseif strcmp(machine, 'glap')
-        FEATURES_DIR = '/home/giulia/REPOS/objrecpipe_mat';
-    else
-        error('Unknown machine!');
-    end
+    FEATURES_DIR = '/data/giulia/REPOS/objrecpipe_mat';
     addpath(genpath(FEATURES_DIR));
 
     %% VL FEAT
@@ -22,15 +14,8 @@ function setup_data = setup_machine(machine)
     gurls_setup();
 
     %% MATLAB CAFFE
-    if strcmp(machine, 'vicolab')
-        caffe_dir = '/data/giulia/REPOS/caffe';
-    elseif strcmp(machine, 'iit')
-        caffe_dir = '/usr/local/src/robot/caffe';
-    elseif strcmp(machine, 'glap')
-        caffe_dir = '/home/giulia/REPOS/caffe';
-    else
-        error('Unknown machine!');
-    end
+    %caffe_dir = '/usr/local/src/robot/caffe';
+    caffe_dir = '/data/giulia/REPOS/caffe';
     addpath(genpath(fullfile(caffe_dir, 'matlab')));
 
 
@@ -43,16 +28,7 @@ function setup_data = setup_machine(machine)
     template_prototxts_path = fullfile(FEATURES_DIR, 'f_finetune/prepare_prototxts/template_models');
     
     %% Global data dir
-    if strcmp(machine, 'vicolab')
-        DATA_DIR = '/data/giulia/ICUBWORLD_ULTIMATE';
-    elseif strcmp(machine, 'iit')
-        DATA_DIR = '/data/giulia/ICUBWORLD_ULTIMATE';
-    elseif strcmp(machine, 'glap')
-        DATA_DIR = '/media/giulia/DATA/';
-    else
-        error('Unknown machine!');
-    end
-    
+    DATA_DIR = '/data/giulia/ICUBWORLD_ULTIMATE';
 
     %% Dataset info
     dset_info = fullfile(DATA_DIR, 'iCubWorldUltimate_registries/info/iCubWorldUltimate.txt');
@@ -62,7 +38,6 @@ function setup_data = setup_machine(machine)
     setup_data.caffe_dir    = caffe_dir;
     setup_data.dset         = dset;
     setup_data.DATA_DIR     = DATA_DIR;
-    setup_data.FEATURES_DIR = FEATURES_DIR;
     
     
     setup_data.caffe_bin_path           = caffe_bin_path;

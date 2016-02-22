@@ -13,12 +13,11 @@ caffestuff.MEAN_H = 256;
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-%% 
+%%
 mapping = 'tuning';
 
 
-%% Fine-tuning params
-
+%%
 base_lr = 1e-3;
 fc8_name = 'fc8-N';
 fc7_name = 'fc7';

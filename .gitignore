@@ -41,3 +41,7 @@ build
 
 # local 
 z_gitignore*
+
+*.jpg
+*.png
+*.fig
