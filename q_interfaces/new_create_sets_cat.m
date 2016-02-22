@@ -1,6 +1,13 @@
 function new_create_sets_cat(DATA_DIR, dset, question_dir, setlist)
 
 
+if isfield(question.setlist,'cat_idx_all_trainval')
+    cat_idx_all_trainval = question.setlist.cat_idx_all_trainval;
+else
+    cat_idx_all_trainval = question.setlist.cat_idx_all;
+end
+
+
 % temporary ?
 num_eval_sets = numel(setlist.obj_lists_all{1});
 
@@ -41,7 +48,12 @@ for eval_set = 1:num_eval_sets
     
     
     for icat=1:length(cat_idx_all)
-        cat_idx = cat_idx_all{icat};
+
+        if num_eval_sets > 2 && eval_set < 3
+            cat_idx = cat_idx_all_trainval{icat};
+        else
+            cat_idx = cat_idx_all{icat};
+        end
         
         % Assign the output dir
         output_dir_regtxt_relative = fullfile(['Ncat_' num2str(length(cat_idx))], strrep(strrep(num2str(cat_idx), '   ', '-'), '  ', '-'),question_dir);

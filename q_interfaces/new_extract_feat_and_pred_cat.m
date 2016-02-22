@@ -2,6 +2,12 @@ function new_extract_feat_and_pred_cat(setup_data,question,network,experiment)
 
 % new_extract_feat_and_pred_cat(  network.caffestuff)
 
+if isfield(question.setlist,'cat_idx_all_trainval')
+    cat_idx_all_trainval = question.setlist.cat_idx_all_trainval;
+else
+    cat_idx_all_trainval = question.setlist.cat_idx_all;
+end
+
 cat_idx_all = question.setlist.cat_idx_all;
 obj_lists_all = question.setlist.obj_lists_all;
 transf_lists_all = question.setlist.transf_lists_all;
@@ -57,8 +63,23 @@ for icat=1:length(cat_idx_all)
     
     cat_idx = cat_idx_all{icat};
 
-
+    cat_idx_trainval = cat_idx_all_trainval{icat};
+    
+    
     %% Assign IO directories
+    dir_regtxt_relative_trainval = fullfile(['Ncat_' num2str(length(cat_idx_trainval))], strrep(strrep(num2str(cat_idx_trainval), '   ', '-'), '  ', '-'));
+    dir_regtxt_relative_trainval = fullfile(dir_regtxt_relative_trainval, question.question_dir);
+
+    input_dir_regtxt_trainval = fullfile(input_dir_regtxt_root, dir_regtxt_relative_trainval);
+    check_input_dir(input_dir_regtxt_trainval);
+    
+    % Assign the labels
+    fid_labels_trainval = fopen(fullfile(input_dir_regtxt_trainval, 'labels.txt'), 'r');
+    Y_digits_trainval = textscan(fid_labels_trainval,'%s %d');
+    Y_digits_trainval = Y_digits_trainval{1};
+    fclose(fid_labels_trainval);
+    
+    
     dir_regtxt_relative = fullfile(['Ncat_' num2str(length(cat_idx))], strrep(strrep(num2str(cat_idx), '   ', '-'), '  ', '-'));
     dir_regtxt_relative = fullfile(dir_regtxt_relative, question.question_dir);
 
@@ -72,6 +93,28 @@ for icat=1:length(cat_idx_all)
     Y_digits = Y_digits{1};
     fclose(fid_labels);
     
+    
+    
+    
+    % create mapping from Y_digits to Y_digits_trainval
+    Y_digits_mapping = zeros(numel(Y_digits),1);
+    last_idx = numel(Y_digits_trainval)+1;
+    for idx_y_digits = 1:numel(Y_digits)
+
+        for idx_y_digits_trainval = 1:numel(Y_digits_trainval)
+            if strcmp(Y_digits{idx_y_digits},Y_digits_trainval{idx_y_digits_trainval})
+                Y_digits_mapping(idx_y_digits) = idx_y_digits_trainval;
+                break;
+            end
+        end
+
+
+        if Y_digits_mapping(idx_y_digits) == 0
+            Y_digits_mapping(idx_y_digits) = last_idx;
+            last_idx = last_idx + 1;
+        end
+    end
+
     
     
     for iobj=1:length(obj_lists_all)
@@ -151,7 +194,7 @@ for icat=1:length(cat_idx_all)
                     
                     if ~isempty(network.mapping)
 
-                        network.caffestuff = network.setup_caffemodel(fullfile(exp_dir, caffe_model_name, dir_regtxt_relative, trainval_dir), network.caffestuff, network.mapping, network.network_dir);
+                        network.caffestuff = network.setup_caffemodel(fullfile(exp_dir, caffe_model_name, dir_regtxt_relative_trainval, trainval_dir), network.caffestuff, network.mapping, network.network_dir);
                         net = caffe.Net(network.caffestuff.net_model, network.caffestuff.net_weights, 'test');
                         % reshape according to batch size
                         inputshape = net.blobs('data').shape();
@@ -380,6 +423,14 @@ for icat=1:length(cat_idx_all)
                         fprintf('batch %d out of %d \n', bidx, Nbatches);
                     end
 
+                    
+                    
+                 
+                    % map and eliminate unknonw classes
+                    Y = Y_digits_mapping(Y + 1) - 1;
+                    idx_to_keep = Y<=numel(Y_digits_trainval);
+                    
+                    
                     % compute accuracy and save everything   
                     saving_acc = true;
                     if isempty(network.mapping) 
@@ -390,7 +441,7 @@ for icat=1:length(cat_idx_all)
                             saving_acc = false;
                         end
                     else
-                        [acc, acc_xclass, C] = trace_confusion(Y+1, Ypred_avg+1, length(cat_idx));
+                        [acc, acc_xclass, C] = trace_confusion(Y(idx_to_keep,:)+1, Ypred_avg(idx_to_keep,:)+1, numel(Y_digits_trainval));
                     end  
                     Ypred = Ypred_avg;
                     if saving_acc     

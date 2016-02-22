@@ -2,6 +2,13 @@ function [RES,feature_matrix,labels_matrix] = new_t_sne_predictions(setup_data, 
 
 %% Load linked information
 
+if isfield(question.setlist,'cat_idx_all_trainval')
+    cat_idx_all_trainval = question.setlist.cat_idx_all_trainval;
+else
+    cat_idx_all_trainval = question.setlist.cat_idx_all;
+end
+
+
 % about the network tested (network)
 load(experiment.network_struct_path);
 
@@ -49,6 +56,8 @@ RES = struct([]);
 for icat=1:length(cat_idx_all)
     
     cat_idx = cat_idx_all{icat};
+    cat_idx_trainval = cat_idx_all{icat};
+    
     cells_sel{1} = cell2mat(values(setup_data.dset.Cat, setup_data.dset.cat_names(cat_idx)));
     
     for iobj=1:length(obj_lists_all)
@@ -127,6 +136,45 @@ for icat=1:length(cat_idx_all)
                     
                     input_dir_regtxt = fullfile(input_dir_regtxt_root, dir_regtxt_relative);
                     check_input_dir(input_dir_regtxt);
+
+                    dir_regtxt_relative_trainval = fullfile(['Ncat_' num2str(length(cat_idx_trainval))], strrep(strrep(num2str(cat_idx_trainval), '   ', '-'), '  ', '-'));
+                    dir_regtxt_relative_trainval = fullfile(dir_regtxt_relative_trainval, question.question_dir);
+                    
+                    input_dir_regtxt_trainval = fullfile(input_dir_regtxt_root, dir_regtxt_relative_trainval);
+                    check_input_dir(input_dir_regtxt_trainval);
+                    
+                    
+                    % Assign the labels
+                    fid_labels_trainval = fopen(fullfile(input_dir_regtxt_trainval, 'labels.txt'), 'r');
+                    Y_digits_trainval = textscan(fid_labels_trainval,'%s %d');
+                    Y_digits_trainval = Y_digits_trainval{1};
+                    fclose(fid_labels_trainval);
+
+                    % Assign the labels
+                    fid_labels = fopen(fullfile(input_dir_regtxt, 'labels.txt'), 'r');
+                    Y_digits = textscan(fid_labels,'%s %d');
+                    Y_digits = Y_digits{1};
+                    fclose(fid_labels);
+
+                    % create mapping from Y_digits to Y_digits_trainval
+                    Y_digits_mapping = zeros(numel(Y_digits),1);
+                    last_idx = numel(Y_digits_trainval)+1;
+                    for idx_y_digits = 1:numel(Y_digits)
+
+                        for idx_y_digits_trainval = 1:numel(Y_digits_trainval)
+                            if strcmp(Y_digits{idx_y_digits},Y_digits_trainval{idx_y_digits_trainval})
+                                Y_digits_mapping(idx_y_digits) = idx_y_digits_trainval;
+                                break;
+                            end
+                        end
+                        
+                        if Y_digits_mapping(idx_y_digits) == 0
+                            Y_digits_mapping(idx_y_digits) = last_idx;
+                            last_idx = last_idx + 1;
+                        end
+                    end
+
+                    
                     
                     if isfield(network, 'network_dir')
                         input_dir = fullfile(exp_dir, network.caffestuff.net_name, dir_regtxt_relative, trainval_dir, network.mapping, network.network_dir);
@@ -164,6 +212,12 @@ for icat=1:length(cat_idx_all)
                     input_registry = textscan(fid, '%s %d');
                     fclose(fid);
                     Y = input_registry{2};
+                    
+                    % map and eliminate unknonw classes
+                    Y = Y_digits_mapping(Y + 1) - 1;
+                    idx_to_keep = Y<=numel(Y_digits_trainval);                   
+                    
+                    
                     REG = input_registry{1};
                     if isempty(network.mapping)% && question.setlist.create_imnetlabels
                         fid = fopen(fullfile(input_dir_regtxt, [set_name '_Yimnet.txt']));
@@ -248,9 +302,9 @@ for icat=1:length(cat_idx_all)
                         Y_avg_struct.Y = Y;
                     end
                     Y_avg_struct = putYinCell(setup_data.dset, REG, Y_avg_struct);
-                    nclasses = size(Y_avg_struct.C,2);
+                    nclasses = numel(unique(Y_avg_struct.Y));%size(Y_avg_struct.C,2);
                     [Y_avg_struct.acc_new, Y_avg_struct.acc_xclass_new, Y_avg_struct.C_new] = ...
-                        computeAcc(Y_avg_struct.Y, Y_avg_struct.Ypred, nclasses, cells_sel, acc_dimensions);
+                        computeAcc(Y_avg_struct.Y(idx_to_keep,:), Y_avg_struct.Ypred(idx_to_keep,:), nclasses, cells_sel, acc_dimensions);
                     % Store
                     RES(icat, iobj, itransf, iday, icam).Y_avg_struct = Y_avg_struct;
                     
@@ -275,11 +329,12 @@ for icat=1:length(cat_idx_all)
 %                             end
                         else
                             Y_central_struct.Y = Y;
+                            
                         end
                         Y_central_struct = putYinCell(setup_data.dset, REG, Y_central_struct);
                         nclasses = size(Y_central_struct.C,2);
                         [Y_central_struct.acc_new, Y_central_struct.acc_xclass_new, Y_central_struct.C_new] = ...
-                            computeAcc(Y_central_struct.Y, Y_central_struct.Ypred, nclasses, cells_sel, acc_dimensions);
+                            computeAcc(Y_central_struct.Y(idx_to_keep,:), Y_central_struct.Ypred(idx_to_keep,:), nclasses, cells_sel, acc_dimensions);
                         % Store
                         RES(icat, iobj, itransf, iday, icam).Y_central_struct = Y_central_struct;
                         if isempty(network.mapping)

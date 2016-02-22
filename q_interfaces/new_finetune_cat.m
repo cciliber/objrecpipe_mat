@@ -2,8 +2,14 @@ function network = new_finetune_cat(setup_data,question,network,dset_dir)
 
 
 
+if isfield(question.setlist,'cat_idx_all_trainval')
+    cat_idx_all = question.setlist.cat_idx_all_trainval;
+else
+    cat_idx_all = question.setlist.cat_idx_all;
+end
 
-cat_idx_all = question.setlist.cat_idx_all;
+
+
 obj_lists_all = question.setlist.obj_lists_all;
 transf_lists_all = question.setlist.transf_lists_all;
 day_mappings_all = question.setlist.day_mappings_all;
