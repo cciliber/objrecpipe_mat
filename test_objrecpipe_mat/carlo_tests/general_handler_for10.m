@@ -252,15 +252,15 @@ function status = test_function(status)
                                 model = gurls_train(Xtr,Ytr);
                                 YpredRLS = gurls_test(model,Xts);
 
-                                [~,YpredRLS_class] = max(YpredRLS,[],2);  
+                                [rls_acc,rls_acc_x_class,rls_C] = trace_confusion(Yts,YpredRLS_class);
+    %                             
+    %                             C = confusionmat(Yts,YpredRLS_class);
+    % 
+    %                             C = C./repmat(sum(C,2),1,size(C,2));
+    % 
+    %                             scores(idx_day,idx_ntr,idx_result) = trace(C)/size(C,1);
 
-                                C = confusionmat(Yts,YpredRLS_class);
-
-                                C = C./repmat(sum(C,2),1,size(C,2));
-
-                                scores(idx_list_classes,idx_day,idx_ntr,idx_result) = trace(C)/size(C,1);
-
-
+                                scores(idx_day,idx_ntr,idx_result) = rls_acc;
 
                                 clear Xtr Xts Ytr Yts;
                                 clear model;
@@ -328,8 +328,11 @@ function status = test_function(status)
 
         display(error_struct.message);
         
-        sendmail({'cciliber@gmail.com'},['Error!'],status.log{end},{fullfile(status.STATUS_PATH,sprintf('status_%d.mat',status.revive_count))});
-
+        try 
+            sendmail({'cciliber@gmail.com'},['Error!'],status.log{end},{fullfile(status.STATUS_PATH,sprintf('status_%d.mat',status.revive_count))});
+        catch
+            sendmail({'cciliber@gmail.com'},['Error!'],['Unable to send Log'],{});
+        end
         
         return;
     end
