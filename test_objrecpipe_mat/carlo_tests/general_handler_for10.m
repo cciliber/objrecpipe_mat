@@ -18,6 +18,7 @@ function general_handler_for10()
     
 
     status = struct;
+    status.name = 'all_reduce_10';
     status.revive_count = 0;
     status.delta_max_revives = 10;
     status.max_revives = status.revive_count + status.delta_max_revives;
@@ -28,7 +29,7 @@ function general_handler_for10()
     
     status.done = false;
     
-    status.STATUS_PATH = fullfile(TEST_DIR, ANALYSIS, 'status');
+    status.STATUS_PATH = fullfile(TEST_DIR, ANALYSIS, 'status',status.name);
     
     
     
@@ -109,7 +110,7 @@ function status = test_function(status)
             
             
             config_filename = config_file_list(status.idx_config).name(1:(end-2));
-            config_file = fullfile(CONFIG_PATH, 'all', config_filename);
+            config_file = fullfile(CONFIG_PATH, 'all_reduce_10', config_filename);
             
             
             if ~exist('create_new_question')
@@ -175,93 +176,102 @@ function status = test_function(status)
                
                 days = [1,2,-1];
                 n_trains = [10, 50, -1];
-
-                scores = zeros(numel(days),numel(n_trains),numel(result));
                 
-                for idx_day = 1:numel(days)
-                    
-                    selected_day = days(idx_day);
-                   
-                    for idx_ntr = 1:numel(n_trains)
-                    
+                list_classes = {1:15 1:10 11:15};
 
-                        ntr = n_trains(idx_ntr);
-                        
-                        selected_transformation = setup_data.dset.Transfs('TRANSL');
+                scores = zeros(numel(list_classes),numel(days),numel(n_trains),numel(result));
+                
+                for idx_list_classes = 1:numel(list_classes)
+                
+                    selected_list_classes = list_classes{idx_list_classes};
+                                         
+                    for idx_day = 1:numel(days)
+
+                        selected_day = days(idx_day);
+
+                        for idx_ntr = 1:numel(n_trains)
 
 
-                        for idx_result = 1:numel(result)
-                            
+                            ntr = n_trains(idx_ntr);
 
-                            ncats = numel(unique(result{idx_result}.labels_matrix(:,1)));
-                            
-                            if selected_day>0
-                                select_idx_day = result{idx_result}.labels_matrix(:,4)==selected_day;
-                            else
-                                select_idx_day = ones(size(result{idx_result}.labels_matrix,1),1);
-                            end
-                            
+                            selected_transformation = setup_data.dset.Transfs('TRANSL');
 
-                            Xtr = [];
-                            Ytr = [];
-                            Xts = [];
-                            Yts = [];
-                            for idx_cat = 1:ncats
 
-                                select_idx_cat = result{idx_result}.labels_matrix(:,1)==idx_cat;
+                            for idx_result = 1:numel(result)
 
-                                for idx_transf = 1:5
+                                
+                                ncats = numel(unique(selected_list_classes));
+                               
+                                
+                                if selected_day>0
+                                    select_idx_day = result{idx_result}.labels_matrix(:,4)==selected_day;
+                                else
+                                    select_idx_day = ones(size(result{idx_result}.labels_matrix,1),1);
+                                end
 
-                                    select_idx_transf = result{idx_result}.labels_matrix(:,3)==idx_transf;
 
-                                  
-                                    select_idx_joint = (select_idx_transf.*select_idx_cat.*select_idx_day);
+                                Xtr = [];
+                                Ytr = [];
+                                Xts = [];
+                                Yts = [];
+                                for idx_cat = 1:ncats
 
-                                    
-                                    
-                                    if idx_transf == selected_transformation
+                                    select_idx_cat = result{idx_result}.labels_matrix(:,1)==selected_list_classes(idx_cat);
 
-                                        tmpXtr = result{idx_result}.feature_matrix(select_idx_joint==1,:);
-                                        if ntr>0 && size(tmpXtr,1)>0
-                                            tmpXtr = tmpXtr(randperm(size(tmpXtr,1),ntr),:);
+                                    for idx_transf = 1:5
+
+                                        select_idx_transf = result{idx_result}.labels_matrix(:,3)==idx_transf;
+
+
+                                        select_idx_joint = (select_idx_transf.*select_idx_cat.*select_idx_day);
+
+
+
+                                        if idx_transf == selected_transformation
+
+                                            tmpXtr = result{idx_result}.feature_matrix(select_idx_joint==1,:);
+                                            if ntr>0 && size(tmpXtr,1)>0
+                                                tmpXtr = tmpXtr(randperm(size(tmpXtr,1),ntr),:);
+                                            end
+
+                                            Xtr = [Xtr; tmpXtr];
+                                            Ytr = [Ytr; idx_cat * ones( size(tmpXtr,1) , 1 )];
+
+                                        else
+                                            Xts = [Xts; result{idx_result}.feature_matrix(select_idx_joint==1,:)];
+                                            Yts = [Yts; idx_cat * ones( sum(select_idx_joint) , 1 )];
                                         end
 
-                                        Xtr = [Xtr; tmpXtr];
-                                        Ytr = [Ytr; idx_cat * ones( size(tmpXtr,1) , 1 )];
+                                    end 
+                                end
 
-                                    else
-                                        Xts = [Xts; result{idx_result}.feature_matrix(select_idx_joint==1,:)];
-                                        Yts = [Yts; idx_cat * ones( sum(select_idx_joint) , 1 )];
-                                    end
 
-                                end 
+
+
+                                % learn and predict
+                                model = gurls_train(Xtr,Ytr);
+                                YpredRLS = gurls_test(model,Xts);
+
+                                [~,YpredRLS_class] = max(YpredRLS,[],2);  
+
+                                C = confusionmat(Yts,YpredRLS_class);
+
+                                C = C./repmat(sum(C,2),1,size(C,2));
+
+                                scores(idx_list_classes,idx_day,idx_ntr,idx_result) = trace(C)/size(C,1);
+
+
+
+                                clear Xtr Xts Ytr Yts;
+                                clear model;
+
                             end
 
 
 
-
-                            % learn and predict
-                            model = gurls_train(Xtr,Ytr);
-                            YpredRLS = gurls_test(model,Xts);
-
-                            [~,YpredRLS_class] = max(YpredRLS,[],2);  
-
-                            C = confusionmat(Yts,YpredRLS_class);
-
-                            C = C./repmat(sum(C,2),1,size(C,2));
-
-                            scores(idx_day,idx_ntr,idx_result) = trace(C)/size(C,1);
-
-
-
-                            clear Xtr Xts Ytr Yts;
-                            clear model;
 
                         end
 
-
-                        
-                        
                     end
                     
                 end
@@ -270,7 +280,7 @@ function status = test_function(status)
                 check_output_dir(fullfile(STRUCT_PATH,'rls'));
                 save(fullfile(STRUCT_PATH,'rls',config_filename),'scores','-v7.3');
 
-                sendmail({'cciliber@gmail.com'},['results' config_filename],mat2str(reshape(scores,numel(days)*numel(n_trains),[])),{fullfile(STRUCT_PATH,'rls',[config_filename '.mat'])});
+                sendmail({'cciliber@gmail.com'},['results ' config_filename],mat2str(reshape(scores,numel(days)*numel(n_trains),[])),{fullfile(STRUCT_PATH,'rls',[config_filename '.mat'])});
                
                 perform_rls = false;
                

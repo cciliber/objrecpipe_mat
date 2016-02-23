@@ -2,11 +2,6 @@ function [RES,feature_matrix,labels_matrix] = new_t_sne_predictions(setup_data, 
 
 %% Load linked information
 
-if isfield(question.setlist,'cat_idx_all_trainval')
-    cat_idx_all_trainval = question.setlist.cat_idx_all_trainval;
-else
-    cat_idx_all_trainval = question.setlist.cat_idx_all;
-end
 
 
 % about the network tested (network)
@@ -14,6 +9,14 @@ load(experiment.network_struct_path);
 
 % abut the subset of the dset considered (question)
 load(experiment.question_struct_path);
+
+
+if isfield(question.setlist,'cat_idx_all_trainval')
+    cat_idx_all_trainval = question.setlist.cat_idx_all_trainval;
+else
+    cat_idx_all_trainval = question.setlist.cat_idx_all;
+end
+
 
 cat_idx_all = question.setlist.cat_idx_all;
 obj_lists_all = question.setlist.obj_lists_all;
@@ -56,7 +59,7 @@ RES = struct([]);
 for icat=1:length(cat_idx_all)
     
     cat_idx = cat_idx_all{icat};
-    cat_idx_trainval = cat_idx_all{icat};
+    cat_idx_trainval = cat_idx_all_trainval{icat};
     
     cells_sel{1} = cell2mat(values(setup_data.dset.Cat, setup_data.dset.cat_names(cat_idx)));
     
@@ -215,7 +218,7 @@ for icat=1:length(cat_idx_all)
                     
                     % map and eliminate unknonw classes
                     Y = Y_digits_mapping(Y + 1) - 1;
-                    idx_to_keep = Y<=numel(Y_digits_trainval);                   
+                    idx_to_keep = Y<numel(Y_digits_trainval);                   
                     
                     
                     REG = input_registry{1};
@@ -300,11 +303,14 @@ for icat=1:length(cat_idx_all)
 %                         end
                     else
                         Y_avg_struct.Y = Y;
+%                         Y_avg_struct.Y = Y(idx_to_keep,:);
+%                         Y_avg_struct.Ypred = Y_avg_struct.Ypred(idx_to_keep,:);
+%                         REG = REG(idx_to_keep);
                     end
                     Y_avg_struct = putYinCell(setup_data.dset, REG, Y_avg_struct);
-                    nclasses = numel(unique(Y_avg_struct.Y));%size(Y_avg_struct.C,2);
+                    nclasses = numel(unique(Y));% size(Y_avg_struct.C,2);
                     [Y_avg_struct.acc_new, Y_avg_struct.acc_xclass_new, Y_avg_struct.C_new] = ...
-                        computeAcc(Y_avg_struct.Y(idx_to_keep,:), Y_avg_struct.Ypred(idx_to_keep,:), nclasses, cells_sel, acc_dimensions);
+                        computeAcc(Y_avg_struct.Y, Y_avg_struct.Ypred, nclasses, cells_sel, acc_dimensions);
                     % Store
                     RES(icat, iobj, itransf, iday, icam).Y_avg_struct = Y_avg_struct;
                     
@@ -334,7 +340,7 @@ for icat=1:length(cat_idx_all)
                         Y_central_struct = putYinCell(setup_data.dset, REG, Y_central_struct);
                         nclasses = size(Y_central_struct.C,2);
                         [Y_central_struct.acc_new, Y_central_struct.acc_xclass_new, Y_central_struct.C_new] = ...
-                            computeAcc(Y_central_struct.Y(idx_to_keep,:), Y_central_struct.Ypred(idx_to_keep,:), nclasses, cells_sel, acc_dimensions);
+                            computeAcc(Y_central_struct.Y, Y_central_struct.Ypred, nclasses, cells_sel, acc_dimensions);
                         % Store
                         RES(icat, iobj, itransf, iday, icam).Y_central_struct = Y_central_struct;
                         if isempty(network.mapping)

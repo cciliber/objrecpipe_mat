@@ -428,7 +428,7 @@ for icat=1:length(cat_idx_all)
                  
                     % map and eliminate unknonw classes
                     Y = Y_digits_mapping(Y + 1) - 1;
-                    idx_to_keep = Y<=numel(Y_digits_trainval);
+                    idx_to_keep = Y<numel(Y_digits_trainval);
                     
                     
                     % compute accuracy and save everything   

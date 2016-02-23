@@ -1,10 +1,10 @@
 function new_create_sets_cat(DATA_DIR, dset, question_dir, setlist)
 
 
-if isfield(question.setlist,'cat_idx_all_trainval')
-    cat_idx_all_trainval = question.setlist.cat_idx_all_trainval;
+if isfield(setlist,'cat_idx_all_trainval')
+    cat_idx_all_trainval = setlist.cat_idx_all_trainval;
 else
-    cat_idx_all_trainval = question.setlist.cat_idx_all;
+    cat_idx_all_trainval = setlist.cat_idx_all;
 end
 
 
