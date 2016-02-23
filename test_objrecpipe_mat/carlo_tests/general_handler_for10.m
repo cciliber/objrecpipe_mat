@@ -310,7 +310,7 @@ function status = test_function(status)
             
             
             clear question;
-            clear experiment;
+            clear experiment;
             clear result;
             
             
@@ -324,8 +324,6 @@ function status = test_function(status)
         
         
     catch error_struct
-    
-        if 
     
     
         
