@@ -251,6 +251,8 @@ function status = test_function(status)
                                 % learn and predict
                                 model = gurls_train(Xtr,Ytr);
                                 YpredRLS = gurls_test(model,Xts);
+                                
+                                [~,YpredRLS_class] = max(YpredRLS,[],2);  
 
                                 [rls_acc,rls_acc_x_class,rls_C] = trace_confusion(Yts,YpredRLS_class,ncats);
     %                             
@@ -303,7 +305,7 @@ function status = test_function(status)
             
             
             clear question;
-            clear experiment;
+            clear experiment;
             clear result;
             
             
