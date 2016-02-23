@@ -252,7 +252,7 @@ function status = test_function(status)
                                 model = gurls_train(Xtr,Ytr);
                                 YpredRLS = gurls_test(model,Xts);
 
-                                [rls_acc,rls_acc_x_class,rls_C] = trace_confusion(Yts,YpredRLS_class);
+                                [rls_acc,rls_acc_x_class,rls_C] = trace_confusion(Yts,YpredRLS_class,ncats);
     %                             
     %                             C = confusionmat(Yts,YpredRLS_class);
     % 
