@@ -1,5 +1,8 @@
-function general_handler_for10()
+function general_handler_for10(start_revive)
 
+    if nargin < 1
+        start_revive = 0;
+    end
     
     setup_mail_matlab;
     
@@ -19,7 +22,7 @@ function general_handler_for10()
 
     status = struct;
     status.name = 'all_reduce_10';
-    status.revive_count = 0;
+    status.revive_count = start_revive;
     status.delta_max_revives = 10;
     status.max_revives = status.revive_count + status.delta_max_revives;
     
@@ -251,6 +254,9 @@ function status = test_function(status)
                                 % learn and predict
                                 model = gurls_train(Xtr,Ytr);
                                 YpredRLS = gurls_test(model,Xts);
+
+                                clear model Xtr Xts Ytr;
+                                
                                 
                                 [~,YpredRLS_class] = max(YpredRLS,[],2);  
 
@@ -264,8 +270,7 @@ function status = test_function(status)
 
                                 scores(idx_day,idx_ntr,idx_result) = rls_acc;
 
-                                clear Xtr Xts Ytr Yts;
-                                clear model;
+                                clear Yts;
 
                             end
 
@@ -319,6 +324,10 @@ function status = test_function(status)
         
         
     catch error_struct
+    
+        if 
+    
+    
         
         status.log{end+1} = error_struct.message;
         
