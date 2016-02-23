@@ -326,6 +326,7 @@ function status = test_function(status)
         
         save(fullfile(status.STATUS_PATH,sprintf('status_%d',status.revive_count)),'-v7.3');
 
+        display(error_struct.message);
         
         sendmail({'cciliber@gmail.com'},['Error!'],status.log{end},{fullfile(status.STATUS_PATH,sprintf('status_%d.mat',status.revive_count))});
 
