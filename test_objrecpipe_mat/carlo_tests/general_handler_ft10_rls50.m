@@ -11,7 +11,7 @@ function general_handler_ft10_rls50(start_revive)
 
     TEST_DIR = '/data/giulia/REPOS/objrecpipe_mat/test_objrecpipe_mat';
 
-    ANALYSIS = 'ft10_rls50';
+    ANALYSIS = 'carlo_test';
 
     CONFIG_PATH = fullfile(TEST_DIR, ANALYSIS, 'config');
     
@@ -21,7 +21,7 @@ function general_handler_ft10_rls50(start_revive)
     
 
     status = struct;
-    status.name = 'all_reduce_10';
+    status.name = 'ft10_rls50';
     status.revive_count = start_revive;
     status.delta_max_revives = 10;
     status.max_revives = status.revive_count + status.delta_max_revives;
@@ -95,7 +95,7 @@ function status = test_function(status)
 
        
         
-        config_file_list = dir(fullfile(CONFIG_PATH, 'all_reduce_10'));
+        config_file_list = dir(fullfile(CONFIG_PATH, 'ft10_rls50'));
  
         % count the number of legal files
         eliminate_idx = [];
@@ -113,7 +113,7 @@ function status = test_function(status)
             
             
             config_filename = config_file_list(status.idx_config).name(1:(end-2));
-            config_file = fullfile(CONFIG_PATH, 'all_reduce_10', config_filename);
+            config_file = fullfile(CONFIG_PATH, 'ft10_rls50', config_filename);
             
             
             if ~exist('create_new_question')
@@ -127,19 +127,6 @@ function status = test_function(status)
                 create_new_question = false; 
             end            
             
-            
-            if ~exist('perform_finetuning')
-                
-
-                % Finetune;
-
-                for ff=1:numel(network)
-                    network{ff} = finetune_network(question, network{ff}, config_file);
-                end
-
-                
-                perform_finetuning = false;
-            end
             
             
             
@@ -178,33 +165,33 @@ function status = test_function(status)
             if ~exist('perform_rls')
                
                 days = [1,2,-1];
-                n_trains = [10, 50, -1];
+                n_trains = [10];
                 
-                list_classes = {1:15 1:10 11:15};
+                n_trials = 3;
 
-                scores = zeros(numel(list_classes),numel(days),numel(n_trains),numel(result));
+                selected_class_list = 11:15;
+                n_obj_per_cat = 10;
                 
-                for idx_list_classes = 1:numel(list_classes)
                 
-                    selected_list_classes = list_classes{idx_list_classes};
-                                         
+                scores = zeros(n_trials,numel(days),numel(n_trains),numel(result));
+                
+                for idx_trial = 1:n_trials
+                                                         
                     for idx_day = 1:numel(days)
 
                         selected_day = days(idx_day);
 
                         for idx_ntr = 1:numel(n_trains)
 
-
                             ntr = n_trains(idx_ntr);
 
                             selected_transformation = setup_data.dset.Transfs('TRANSL');
-
 
                             for idx_result = 1:numel(result)
 
                                 
                                 ncats = numel(unique(selected_list_classes));
-                               
+                                
                                 
                                 if selected_day>0
                                     select_idx_day = result{idx_result}.labels_matrix(:,4)==selected_day;
@@ -217,35 +204,54 @@ function status = test_function(status)
                                 Ytr = [];
                                 Xts = [];
                                 Yts = [];
+                                
+                                
                                 for idx_cat = 1:ncats
-
+                                    
+                                    
                                     select_idx_cat = result{idx_result}.labels_matrix(:,1)==selected_list_classes(idx_cat);
 
-                                    for idx_transf = 1:5
+                                    
+                                    for idx_obj = 1:n_obj_per_cat
+                                        
 
-                                        select_idx_transf = result{idx_result}.labels_matrix(:,3)==idx_transf;
+                                        select_idx_obj = result{idx_result}.labels_matrix(:,2)==idx_obj;
+
+                                        
+                                        for idx_transf = 1:5
+
+                                            select_idx_transf = result{idx_result}.labels_matrix(:,3)==idx_transf;
 
 
-                                        select_idx_joint = (select_idx_transf.*select_idx_cat.*select_idx_day);
+                                            
 
 
+                                            if idx_transf == selected_transformation
+                                                
+                                                select_idx_joint = (select_idx_transf.*select_idx_cat.*select_idx_day.*select_idx_obj);
 
-                                        if idx_transf == selected_transformation
+                                                tmpXtr = result{idx_result}.feature_matrix(select_idx_joint==1,:);
+                                                if ntr>0 && size(tmpXtr,1)>0
+                                                    tmpXtr = tmpXtr(randperm(size(tmpXtr,1),ntr),:);
+                                                end
 
-                                            tmpXtr = result{idx_result}.feature_matrix(select_idx_joint==1,:);
-                                            if ntr>0 && size(tmpXtr,1)>0
-                                                tmpXtr = tmpXtr(randperm(size(tmpXtr,1),ntr),:);
+                                                Xtr = [Xtr; tmpXtr];
+                                                Ytr = [Ytr; ((idx_cat-1)*n_obj_per_cat + idx_obj) * ones( size(tmpXtr,1) , 1 )];
+
+                                            else
+                                                select_idx_joint = (select_idx_transf.*select_idx_cat.*select_idx_obj);
+
+                                                
+                                                Xts = [Xts; result{idx_result}.feature_matrix(select_idx_joint==1,:)];
+                                                Yts = [Yts; ((idx_cat-1)*n_obj_per_cat + idx_obj) * ones( sum(select_idx_joint) , 1 )];
                                             end
 
-                                            Xtr = [Xtr; tmpXtr];
-                                            Ytr = [Ytr; idx_cat * ones( size(tmpXtr,1) , 1 )];
-
-                                        else
-                                            Xts = [Xts; result{idx_result}.feature_matrix(select_idx_joint==1,:)];
-                                            Yts = [Yts; idx_cat * ones( sum(select_idx_joint) , 1 )];
                                         end
-
-                                    end 
+                                        
+                                        
+                                    end
+                                    
+                                    
                                 end
 
 
@@ -260,15 +266,9 @@ function status = test_function(status)
                                 
                                 [~,YpredRLS_class] = max(YpredRLS,[],2);  
 
-                                [rls_acc,rls_acc_x_class,rls_C] = trace_confusion(Yts,YpredRLS_class,ncats);
-    %                             
-    %                             C = confusionmat(Yts,YpredRLS_class);
-    % 
-    %                             C = C./repmat(sum(C,2),1,size(C,2));
-    % 
-    %                             scores(idx_day,idx_ntr,idx_result) = trace(C)/size(C,1);
-
-                                scores(idx_day,idx_ntr,idx_result) = rls_acc;
+                                [rls_acc,rls_acc_x_class,rls_C] = trace_confusion(Yts,YpredRLS_class,ncats*n_obj_per_cat);
+    
+                                scores(idx_trial,idx_day,idx_ntr,idx_result) = rls_acc
 
                                 clear Yts;
 
@@ -303,7 +303,6 @@ function status = test_function(status)
             % clean up stuff
             
             clear create_new_question;
-            clear perform_finetuning;
             clear perform_experiment;
             clear compute_results;
             clear perform_rls;
