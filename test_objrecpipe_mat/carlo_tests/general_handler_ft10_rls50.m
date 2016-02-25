@@ -11,7 +11,7 @@ function general_handler_ft10_rls50(start_revive)
 
     TEST_DIR = '/data/giulia/REPOS/objrecpipe_mat/test_objrecpipe_mat';
 
-    ANALYSIS = 'carlo_test';
+    ANALYSIS = 'carlo_tests';
 
     CONFIG_PATH = fullfile(TEST_DIR, ANALYSIS, 'config');
     
@@ -139,6 +139,12 @@ function status = test_function(status)
                     experiment_name = [experiment_config_filename '_' question.question_dir '_' network{ff}.network_dir];
                     experiment{ff} = experiment_network(fullfile(STRUCT_PATH, 'experiment'), experiment_name, question, network{ff}, config_file);
                     close;
+                    
+                    try 
+                        sendmail({'cciliber@gmail.com'},[config_filename ' Extraction n. ' num2str(ff) ],'Done',{});
+                    catch
+                        sendmail({'cciliber@gmail.com'},['Error!'],['Unable to send Experiment log mail'],{});
+                    end
                 end
             
                 perform_experiment = false;
