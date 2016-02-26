@@ -309,8 +309,8 @@ for icat=1:length(cat_idx_all)
                     end
                     Y_avg_struct = putYinCell(setup_data.dset, REG, Y_avg_struct);
                     nclasses = numel(unique(Y));% size(Y_avg_struct.C,2);
-                    [Y_avg_struct.acc_new, Y_avg_struct.acc_xclass_new, Y_avg_struct.C_new] = ...
-                        computeAcc(Y_avg_struct.Y, Y_avg_struct.Ypred, nclasses, cells_sel, acc_dimensions);
+%                     [Y_avg_struct.acc_new, Y_avg_struct.acc_xclass_new, Y_avg_struct.C_new] = ...
+%                         computeAcc(Y_avg_struct.Y, Y_avg_struct.Ypred, nclasses, cells_sel, acc_dimensions);
                     % Store
                     RES(icat, iobj, itransf, iday, icam).Y_avg_struct = Y_avg_struct;
                     
@@ -339,8 +339,8 @@ for icat=1:length(cat_idx_all)
                         end
                         Y_central_struct = putYinCell(setup_data.dset, REG, Y_central_struct);
                         nclasses = size(Y_central_struct.C,2);
-                        [Y_central_struct.acc_new, Y_central_struct.acc_xclass_new, Y_central_struct.C_new] = ...
-                            computeAcc(Y_central_struct.Y, Y_central_struct.Ypred, nclasses, cells_sel, acc_dimensions);
+%                         [Y_central_struct.acc_new, Y_central_struct.acc_xclass_new, Y_central_struct.C_new] = ...
+%                             computeAcc(Y_central_struct.Y, Y_central_struct.Ypred, nclasses, cells_sel, acc_dimensions);
                         % Store
                         RES(icat, iobj, itransf, iday, icam).Y_central_struct = Y_central_struct;
                         if isempty(network.mapping)
