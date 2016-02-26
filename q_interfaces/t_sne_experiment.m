@@ -18,12 +18,11 @@ function results = t_sne_experiment(results_root_path, results_name, experiment,
 
     results.results_struct_path = fullfile(results_root_path, results_name);
 
-    
-    results.feat_name = feat_names{1};
-    
-%     % override!! 
-%     results.feat_name = 'pool5';
-%     results.feat_name = 'fc7';
+    if exist('feat_names')
+        results.feat_name = feat_names{1};
+    else
+        results.feat_name = 'fc7';
+    end
     
     
     results.acc_dimensions = acc_dimensions;
