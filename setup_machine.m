@@ -14,8 +14,8 @@ function setup_data = setup_machine()
     gurls_setup();
 
     %% MATLAB CAFFE
-    %caffe_dir = '/usr/local/src/robot/caffe';
-    caffe_dir = '/data/giulia/REPOS/caffe';
+    caffe_dir = '/usr/local/src/robot/caffe';
+    %caffe_dir = '/data/giulia/REPOS/caffe';
     addpath(genpath(fullfile(caffe_dir, 'matlab')));
 
 

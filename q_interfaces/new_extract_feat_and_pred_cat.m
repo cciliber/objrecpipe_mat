@@ -466,7 +466,7 @@ for icat=1:length(cat_idx_all)
                                 saving_acc = false;
                             end
                         else
-                            [acc, acc_xclass, C] = trace_confusion(Y+1, Ypred_central+1, length(cat_idx));
+                            [acc, acc_xclass, C] = trace_confusion(Y(idx_to_keep,:)+1, Ypred_central(idx_to_keep,:)+1, numel(Y_digits_trainval));
                         end
                         Ypred = Ypred_central;
                         if saving_acc
