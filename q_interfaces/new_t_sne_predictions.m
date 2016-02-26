@@ -63,6 +63,10 @@ for icat=1:length(cat_idx_all)
     
     cells_sel{1} = cell2mat(values(setup_data.dset.Cat, setup_data.dset.cat_names(cat_idx)));
     
+    feature_matrix = cell(numel(obj_list_all),1);
+    labels_matrix = cell(numel(obj_list_all),1);
+
+    
     for iobj=1:length(obj_lists_all)
         
         obj_list = obj_lists_all{iobj}{eval_set};
@@ -251,8 +255,8 @@ for icat=1:length(cat_idx_all)
                     
                     
                     tmp_fc = load(fullfile(input_dir_fc,[REG{1}(1:(end-4)) '.mat']));
-                    feature_matrix = zeros(numel(REG),size(tmp_fc.fc,1));
-                    labels_matrix = zeros(numel(REG),4);
+                    feature_matrix{iobj} = zeros(numel(REG),size(tmp_fc.fc,1));
+                    labels_matrix{iobj} = zeros(numel(REG),4);
                     
                     dirlist = cellfun(@fileparts, REG, 'UniformOutput', false);
                     dirlist_splitted = regexp(dirlist, '/', 'split');
@@ -262,10 +266,10 @@ for icat=1:length(cat_idx_all)
                     
                         tmp_fc = load(fullfile(input_dir_fc,[REG{idx_REG}(1:(end-4)) '.mat']));
 %                         results.feature_matrix(idx_REG,:) = tmp_fc.fc(:,experiment.prep.central_score_idx)';
-                        feature_matrix(idx_REG,:) = tmp_fc.fc(:,1)';
+                        feature_matrix{iobj}(idx_REG,:) = tmp_fc.fc(:,1)';
    
                         obj = str2double(dirlist_splitted{idx_REG,2}(regexp(dirlist_splitted{idx_REG,2}, '\d'):end));
-                        labels_matrix(idx_REG,:) = [Y(idx_REG)+1, obj, setup_data.dset.Transfs(dirlist_splitted{idx_REG,3}), setup_data.dset.Days(dirlist_splitted{idx_REG,4})];
+                        labels_matrix{iobj}(idx_REG,:) = [Y(idx_REG)+1, obj, setup_data.dset.Transfs(dirlist_splitted{idx_REG,3}), setup_data.dset.Days(dirlist_splitted{idx_REG,4})];
                         
                     end
 
