@@ -141,8 +141,9 @@ function status = test_function(status)
                     experiment_name = [experiment_config_filename '_' question.question_dir '_' network{ff}.network_dir];
 %                     experiment{ff} = experiment_network(fullfile(STRUCT_PATH, 'experiment'), experiment_name, question, network{ff}, config_file);
                     
+                    experiment{ff} = load(fullfile(STRUCT_PATH, 'experiment', experiment_name));
 
-                      close;
+                    close;
 %                     
 %                     try 
 %                         sendmail({'cciliber@gmail.com'},[config_filename ' Extraction n. ' num2str(ff) ],'Done',{});
@@ -172,136 +173,157 @@ function status = test_function(status)
             
             
             
+            
             if ~exist('perform_rls')
+                
                
-                days = [1,2,-1];
+                days = [1,2];
                 n_trains = [10];
+                test_transformations = {'SCALE','ROT2D'};
+
+
+                trasl_idx = setup_data.dset.Transfs('TRANSL');
                 
-                n_trials = 3;
-
-                selected_list_classes = 11:15;
-                n_obj_per_cat = 10;
+                rot_idx = setup_data.dset.Transfs('ROT2D');
+                
+                scale_idx = setup_data.dset.Transfs('SCALE');
                 
                 
-                scores = zeros(n_trials,numel(days),numel(n_trains),numel(result));
+                if ~isfield(status,'scores')
+                    status.scores = zeros(10,numel(result),numel(n_trains),numel(test_transformations),numel(days));
+                end
                 
-                for idx_trial = 1:n_trials
-                                                         
-                    for idx_day = 1:numel(days)
+                
+                             
+                for idx_day = 1:numel(days)
+                    
+                    selected_day = days(idx_day);
+                   
+                    for idx_ntr = 1:numel(n_trains)
 
-                        selected_day = days(idx_day);
-
-                        for idx_ntr = 1:numel(n_trains)
-
-                            ntr = n_trains(idx_ntr);
-
-                            selected_transformation = setup_data.dset.Transfs('TRANSL');
-
-                            for idx_result = 1:numel(result)
-
-                                
-                                ncats = numel(unique(selected_list_classes));
-                                
-                                
-                                if selected_day>0
-                                    select_idx_day = result{idx_result}.labels_matrix(:,4)==selected_day;
-                                else
-                                    select_idx_day = ones(size(result{idx_result}.labels_matrix,1),1);
-                                end
+                        ntr = n_trains(idx_ntr);
+                        
 
 
-                                Xtr = [];
-                                Ytr = [];
-                                Xts = [];
-                                Yts = [];
-                                
-                                
-                                for idx_cat = 1:ncats
-                                    
-                                    
-                                    select_idx_cat = result{idx_result}.labels_matrix(:,1)==selected_list_classes(idx_cat);
+                        for idx_result = 1:numel(result)
+                            
 
-                                    
-                                    for idx_obj = 1:n_obj_per_cat
-                                        
-
-                                        select_idx_obj = result{idx_result}.labels_matrix(:,2)==idx_obj;
-
-                                        
-                                        for idx_transf = 1:5
-
-                                            select_idx_transf = result{idx_result}.labels_matrix(:,3)==idx_transf;
-
-
-                                            
-
-
-                                            if idx_transf == selected_transformation
-                                                
-                                                select_idx_joint = (select_idx_transf.*select_idx_cat.*select_idx_day.*select_idx_obj);
-
-                                                tmpXtr = result{idx_result}.feature_matrix(select_idx_joint==1,:);
-                                                if ntr>0 && size(tmpXtr,1)>0
-                                                    tmpXtr = tmpXtr(randperm(size(tmpXtr,1),ntr),:);
-                                                end
-
-                                                Xtr = [Xtr; tmpXtr];
-                                                Ytr = [Ytr; ((idx_cat-1)*n_obj_per_cat + idx_obj) * ones( size(tmpXtr,1) , 1 )];
-
-                                            else
-                                                select_idx_joint = (select_idx_transf.*select_idx_cat.*select_idx_obj);
-
-                                                
-                                                Xts = [Xts; result{idx_result}.feature_matrix(select_idx_joint==1,:)];
-                                                Yts = [Yts; ((idx_cat-1)*n_obj_per_cat + idx_obj) * ones( sum(select_idx_joint) , 1 )];
-                                            end
-
-                                        end
-                                        
-                                        
-                                    end
-                                    
-                                    
-                                end
-
-
-
-
-                                % learn and predict
-                                model = gurls_train(Xtr,Ytr);
-                                YpredRLS = gurls_test(model,Xts);
-
-                                clear model Xtr Xts Ytr;
-                                
-                                
-                                [~,YpredRLS_class] = max(YpredRLS,[],2);  
-
-                                [rls_acc,rls_acc_x_class,rls_C] = trace_confusion(Yts,YpredRLS_class,ncats*n_obj_per_cat);
-    
-                                scores(idx_trial,idx_day,idx_ntr,idx_result) = rls_acc
-
-                                clear Yts;
-
+                            ncats = 5;
+                            
+                            if selected_day>0
+                                select_idx_day = result{idx_result}.labels_matrix(:,4)==selected_day;
+                            else
+                                select_idx_day = ones(size(result{idx_result}.labels_matrix,1),1);
                             end
+                            
+
+                            Xtr = [];
+                            Ytr = [];
+                            
+                            Xts_rot = [];
+                            Yts_rot = [];
+                            
+                            Xts_scale = [];
+                            Yts_scale = [];
+                            
+                            
+                            for idx_cat = 1:ncats
+
+                                select_idx_cat = result{idx_result}.labels_matrix(:,1)==selected_list_classes(idx_cat);
+                                
+                                
+                                for idx_obj = 1:n_obj_per_cat
+
+
+                                    select_idx_obj = result{idx_result}.labels_matrix(:,2)==idx_obj;
+
+
+                                    select_idx_transl = result{idx_result}.labels_matrix(:,3)==trasl_idx;
+                                    select_idx_rot = result{idx_result}.labels_matrix(:,3)==rot_idx;
+                                    select_idx_scale = result{idx_result}.labels_matrix(:,3)==scale_idx;
+
+
+                                    select_idx_joint = (select_idx_transl.*select_idx_cat.*select_idx_day.*select_idx_obj);
+
+                                    tmpXtr = result{idx_result}.feature_matrix(select_idx_joint==1,:);
+                                    if ntr>0 && size(tmpXtr,1)>0
+                                        tmpXtr = tmpXtr(randperm(size(tmpXtr,1),ntr),:);
+                                    end
+
+                                    Xtr = [Xtr; tmpXtr];
+                                    Ytr = [Ytr; ((idx_cat-1)*n_obj_per_cat + idx_obj)  * ones( size(tmpXtr,1) , 1 )];
 
 
 
+                                    select_idx_joint = (select_idx_rot.*select_idx_cat.*select_idx_day.*select_idx_obj);
+
+
+                                    Xts_rot = [Xts_rot; result{idx_result}.feature_matrix(select_idx_joint==1,:)]; 
+                                    Yts_rot = [Yts_rot; ((idx_cat-1)*n_obj_per_cat + idx_obj)  * ones( sum(select_idx_joint) , 1 )];
+
+                                    select_idx_joint = (select_idx_scale.*select_idx_cat.*select_idx_day.*select_idx_obj);
+
+                                    Xts_scale = [Xts_scale; result{idx_result}.feature_matrix(select_idx_joint==1,:)]; 
+                                    Yts_scale = [Yts_scale; ((idx_cat-1)*n_obj_per_cat + idx_obj)  * ones( sum(select_idx_joint) , 1 )];
+
+                                end
+                                
+                                
+                                
+                                
+                            end
+                                
+
+
+
+
+                            % learn and predict
+                            model = gurls_train(Xtr,Ytr);
+                            
+                            
+                            YpredRLS = gurls_test(model,Xts_scale);
+                            [~,YpredRLS_class] = max(YpredRLS,[],2);  
+                            C = confusionmat(Yts_scale,YpredRLS_class);
+                            C = C./repmat(sum(C,2),1,size(C,2));
+
+                            status.scores(status.idx_config,idx_result,idx_ntr,1,idx_day) = trace(C)/size(C,1);
+
+                            
+                            
+                            YpredRLS = gurls_test(model,Xts_rot);
+                            [~,YpredRLS_class] = max(YpredRLS,[],2);  
+                            C = confusionmat(Yts_rot,YpredRLS_class);
+                            C = C./repmat(sum(C,2),1,size(C,2));
+
+                            status.scores(status.idx_config,idx_result,idx_ntr,2,idx_day) = trace(C)/size(C,1);
+
+
+
+                            clear Xtr Xts Ytr Yts;
+                            clear model;
 
                         end
 
+
+                        
+                        
                     end
                     
                 end
                 
+                scores = status.scores(1:status.idx_config,:,:,:,:);
                 
                 check_output_dir(fullfile(STRUCT_PATH,'rls'));
                 save(fullfile(STRUCT_PATH,'rls',config_filename),'scores','-v7.3');
 
-                sendmail({'cciliber@gmail.com'},['results ' config_filename],mat2str(reshape(scores,numel(days)*numel(n_trains),[])),{fullfile(STRUCT_PATH,'rls',[config_filename '.mat'])});
+                sendmail({'cciliber@gmail.com'},['results' config_filename],'Check',{fullfile(STRUCT_PATH,'rls',[config_filename '.mat'])});
                
                 perform_rls = false;
                
             end
+            
+            
+            
             
                 
             
