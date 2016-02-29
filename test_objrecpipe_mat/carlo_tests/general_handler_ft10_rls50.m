@@ -120,8 +120,10 @@ function status = test_function(status)
             
            
                 % Create and save question (the registries)
-                question = create_question(fullfile(STRUCT_PATH, 'question'), config_filename, config_file);
+%                 question = create_question(fullfile(STRUCT_PATH, 'question'), config_filename, config_file);
         
+                question = load(fullfile(STRUCT_PATH, 'question', config_filename));
+                question = question.question;
                 
                 
                 create_new_question = false; 
@@ -137,14 +139,16 @@ function status = test_function(status)
                 experiment = {};
                 for ff=1:numel(network)
                     experiment_name = [experiment_config_filename '_' question.question_dir '_' network{ff}.network_dir];
-                    experiment{ff} = experiment_network(fullfile(STRUCT_PATH, 'experiment'), experiment_name, question, network{ff}, config_file);
-                    close;
+%                     experiment{ff} = experiment_network(fullfile(STRUCT_PATH, 'experiment'), experiment_name, question, network{ff}, config_file);
                     
-                    try 
-                        sendmail({'cciliber@gmail.com'},[config_filename ' Extraction n. ' num2str(ff) ],'Done',{});
-                    catch
-                        sendmail({'cciliber@gmail.com'},['Error!'],['Unable to send Experiment log mail'],{});
-                    end
+
+                      close;
+%                     
+%                     try 
+%                         sendmail({'cciliber@gmail.com'},[config_filename ' Extraction n. ' num2str(ff) ],'Done',{});
+%                     catch
+%                         sendmail({'cciliber@gmail.com'},['Error!'],['Unable to send Experiment log mail'],{});
+%                     end
                 end
             
                 perform_experiment = false;
