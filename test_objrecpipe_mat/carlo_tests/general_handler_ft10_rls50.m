@@ -175,7 +175,7 @@ function status = test_function(status)
                 
                 n_trials = 3;
 
-                selected_class_list = 11:15;
+                selected_list_classes = 11:15;
                 n_obj_per_cat = 10;
                 
                 
